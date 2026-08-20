@@ -183,6 +183,24 @@ function straightWindow(high: number) {
   return high === 5 ? [14, 2, 3, 4, 5] : Array.from({ length: 5 }, (_, index) => high - 4 + index);
 }
 
+function fullHouseRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> {
+  const boardCounts = new Map<number, number>();
+  for (const card of board) boardCounts.set(valueOf(card), (boardCounts.get(valueOf(card)) ?? 0) + 1);
+  const required: number[] = [];
+  const targets: Array<[number, number]> = [[score[1], 3], [score[2], 2]];
+  for (const [rank, target] of targets) {
+    for (let count = boardCounts.get(rank) ?? 0; count < target; count++) required.push(rank);
+  }
+  const label = required.length === 0
+    ? "公共牌已成葫芦"
+    : required.length === 1
+      ? `${rankLabel(required[0])} + 任意牌`
+      : required[0] === required[1]
+        ? `对${rankLabel(required[0])}`
+        : required.map(rankLabel).join(" ");
+  return { key: `${score[1]}-${score[2]}-${label}`, label, strength: [score[1], score[2]] };
+}
+
 function variantDetails(score: Score, holeCards: [string, string], board: string[]): Omit<BoardVariant, "comboCount"> | null {
   const category = score[0];
   if (category === 8) {
@@ -196,7 +214,7 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
     return { key: `${label}-${suit.code}`, label, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
   if (category === 7) return { key: String(score[1]), label: `${rankLabel(score[1])}四条`, strength: [score[1]] };
-  if (category === 6) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}满${rankLabel(score[2])}`, strength: [score[1], score[2]] };
+  if (category === 6) return fullHouseRequirement(score, board);
   if (category === 5) {
     const suit = flushSuit([...holeCards, ...board])!;
     return { key: suit.code, label: `${suit.symbol} ${suit.name}同花`, strength: [-SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
