@@ -118,6 +118,7 @@ const scenarios: Scenario[] = [
   { name: "转牌·单挑", hero: ["As", "Kh"], board: ["10s", "9s", "8s", "6h"], opponents: 1 },
   { name: "翻牌·单挑", hero: ["Qs", "Qh"], board: ["As", "Kd", "7c"], opponents: 1 },
   { name: "翻牌前·单挑", hero: ["As", "Kh"], board: [], opponents: 1 },
+  { name: "翻牌前KK·单挑", hero: ["Ks", "Kh"], board: [], opponents: 1 },
 ];
 
 const selectedScenarios = process.env.MC_FILTER
