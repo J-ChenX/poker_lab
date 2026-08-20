@@ -234,6 +234,16 @@ function twoPairRequirement(score: Score, board: string[]): Omit<BoardVariant, "
   return { key: `${score[1]}-${score[2]}-${label}`, label, strength: [score[1], score[2]] };
 }
 
+function pairRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> {
+  const countOnBoard = board.filter((card) => valueOf(card) === score[1]).length;
+  const label = countOnBoard === 0
+    ? `对${rankLabel(score[1])}`
+    : countOnBoard === 1
+      ? rankLabel(score[1])
+      : `公共牌已有对${rankLabel(score[1])}`;
+  return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
+}
+
 function pairedBoardTwoPairRequirements(board: string[], excluded: string[]): BoardVariant[] | null {
   const boardCounts = new Map<number, number>();
   for (const card of board) boardCounts.set(valueOf(card), (boardCounts.get(valueOf(card)) ?? 0) + 1);
@@ -277,7 +287,7 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
   if (category === 4) return straightRequirement(score, board);
   if (category === 3) return tripsRequirement(score, board);
   if (category === 2) return twoPairRequirement(score, board);
-  return { key: String(score[1]), label: `${rankLabel(score[1])}一对`, strength: [score[1]] };
+  return pairRequirement(score, board);
 }
 
 export function boardCategoryCatalogue(board: string[], excluded: string[] = []): BoardCategory[] {
