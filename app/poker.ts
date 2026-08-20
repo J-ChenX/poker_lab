@@ -8,131 +8,140 @@ export const SUITS = [
 export const DECK = SUITS.flatMap((suit) => RANKS.map((rank) => `${rank}${suit.code}`));
 export const HAND_NAMES = ["高牌", "一对", "两对", "三条", "顺子", "同花", "葫芦", "四条", "同花顺"];
 
-type Score = number[];
-export type SimulationResult = {
+export type Score = number[];
+export type ExactResult = {
   win: number;
   tie: number;
   lose: number;
   equity: number;
   samples: number;
-  exact: boolean;
   categories: number[];
   bestHand: string;
 };
+export type RankedBoardHand = { cards: [string, string]; handName: string; score: Score };
 
 const valueOf = (card: string) => RANKS.indexOf(card.slice(0, -1) as (typeof RANKS)[number]) + 2;
 
-function evaluateFive(cards: string[]): Score {
-  const values = cards.map(valueOf).sort((a, b) => b - a);
-  const counts = new Map<number, number>();
-  values.forEach((v) => counts.set(v, (counts.get(v) || 0) + 1));
-  const groups = [...counts.entries()].sort((a, b) => b[1] - a[1] || b[0] - a[0]);
-  const flush = cards.every((card) => card.slice(-1) === cards[0].slice(-1));
-  const unique = [...new Set(values)];
-  let straightHigh = 0;
-  if (unique.length === 5) {
-    if (unique[0] - unique[4] === 4) straightHigh = unique[0];
-    else if (unique.join(",") === "14,5,4,3,2") straightHigh = 5;
-  }
-  if (flush && straightHigh) return [8, straightHigh];
-  if (groups[0][1] === 4) return [7, groups[0][0], groups[1][0]];
-  if (groups[0][1] === 3 && groups[1][1] === 2) return [6, groups[0][0], groups[1][0]];
-  if (flush) return [5, ...values];
-  if (straightHigh) return [4, straightHigh];
-  if (groups[0][1] === 3) return [3, groups[0][0], ...groups.slice(1).map((g) => g[0]).sort((a, b) => b - a)];
-  if (groups[0][1] === 2 && groups[1][1] === 2) return [2, Math.max(groups[0][0], groups[1][0]), Math.min(groups[0][0], groups[1][0]), groups[2][0]];
-  if (groups[0][1] === 2) return [1, groups[0][0], ...groups.slice(1).map((g) => g[0]).sort((a, b) => b - a)];
-  return [0, ...values];
-}
-
-export function evaluate(cards: string[]): Score {
-  let best: Score = [-1];
-  for (let a = 0; a < cards.length - 4; a++)
-    for (let b = a + 1; b < cards.length - 3; b++)
-      for (let c = b + 1; c < cards.length - 2; c++)
-        for (let d = c + 1; d < cards.length - 1; d++)
-          for (let e = d + 1; e < cards.length; e++) {
-            const score = evaluateFive([cards[a], cards[b], cards[c], cards[d], cards[e]]);
-            if (compare(score, best) > 0) best = score;
-          }
-  return best;
-}
-
-function compare(a: Score, b: Score) {
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const diff = (a[i] || 0) - (b[i] || 0);
-    if (diff) return diff;
+function straightHigh(values: number[]) {
+  const present = new Set(values);
+  if (present.has(14)) present.add(1);
+  for (let high = 14; high >= 5; high--) {
+    let found = true;
+    for (let offset = 0; offset < 5; offset++) if (!present.has(high - offset)) found = false;
+    if (found) return high;
   }
   return 0;
 }
 
-function summarize(outcomes: number[], equity: number, categories: number[], exact: boolean): SimulationResult {
+// Direct 5–7 card evaluator. It derives the best category without generating
+// every five-card subset, which keeps full flop enumeration practical.
+export function evaluate(cards: string[]): Score {
+  const counts = Array(15).fill(0) as number[];
+  const suitValues: Record<string, number[]> = { s: [], h: [], d: [], c: [] };
+  for (const card of cards) {
+    const value = valueOf(card);
+    counts[value]++;
+    suitValues[card.slice(-1)].push(value);
+  }
+  const ranks = Array.from({ length: 13 }, (_, index) => index + 2).filter((rank) => counts[rank]).sort((a, b) => b - a);
+  const flushRanks = Object.values(suitValues).find((values) => values.length >= 5)?.sort((a, b) => b - a);
+  if (flushRanks) {
+    const high = straightHigh(flushRanks);
+    if (high) return [8, high];
+  }
+  const quads = ranks.filter((rank) => counts[rank] === 4);
+  if (quads.length) return [7, quads[0], ranks.find((rank) => rank !== quads[0])!];
+  const trips = ranks.filter((rank) => counts[rank] === 3);
+  const pairs = ranks.filter((rank) => counts[rank] >= 2);
+  if (trips.length && pairs.some((rank) => rank !== trips[0])) return [6, trips[0], pairs.find((rank) => rank !== trips[0])!];
+  if (flushRanks) return [5, ...flushRanks.slice(0, 5)];
+  const straight = straightHigh(ranks);
+  if (straight) return [4, straight];
+  if (trips.length) return [3, trips[0], ...ranks.filter((rank) => rank !== trips[0]).slice(0, 2)];
+  if (pairs.length >= 2) {
+    const [highPair, lowPair] = pairs;
+    return [2, highPair, lowPair, ranks.find((rank) => rank !== highPair && rank !== lowPair)!];
+  }
+  if (pairs.length === 1) return [1, pairs[0], ...ranks.filter((rank) => rank !== pairs[0]).slice(0, 3)];
+  return [0, ...ranks.slice(0, 5)];
+}
+
+export function compareScores(a: Score, b: Score) {
+  for (let index = 0; index < Math.max(a.length, b.length); index++) {
+    const difference = (a[index] || 0) - (b[index] || 0);
+    if (difference) return difference;
+  }
+  return 0;
+}
+
+function combinations(cards: string[], size: number) {
+  if (size === 0) return [[]] as string[][];
+  if (size === 1) return cards.map((card) => [card]);
+  const result: string[][] = [];
+  for (let first = 0; first < cards.length - 1; first++)
+    for (let second = first + 1; second < cards.length; second++) result.push([cards[first], cards[second]]);
+  return result;
+}
+
+export async function enumerateExact(
+  hero: string[],
+  board: string[],
+  onProgress?: (progress: number) => void,
+): Promise<ExactResult> {
+  if (hero.length !== 2 || board.length < 3 || board.length > 5) throw new Error("精确枚举需要两张底牌和至少三张公共牌");
+  const used = new Set([...hero, ...board]);
+  const available = DECK.filter((card) => !used.has(card));
+  const missing = 5 - board.length;
+  const runouts = combinations(available, missing);
+  const outcomes = [0, 0, 0];
+  const categories = Array(9).fill(0) as number[];
+  let equity = 0;
+
+  for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
+    const runout = runouts[runoutIndex];
+    const blocked = new Set(runout);
+    const opponentDeck = available.filter((card) => !blocked.has(card));
+    const finalBoard = [...board, ...runout];
+    const heroScore = evaluate([...hero, ...finalBoard]);
+    for (let first = 0; first < opponentDeck.length - 1; first++) {
+      for (let second = first + 1; second < opponentDeck.length; second++) {
+        const opponentScore = evaluate([opponentDeck[first], opponentDeck[second], ...finalBoard]);
+        const comparison = compareScores(heroScore, opponentScore);
+        categories[heroScore[0]]++;
+        if (comparison > 0) { outcomes[0]++; equity += 1; }
+        else if (comparison === 0) { outcomes[1]++; equity += .5; }
+        else outcomes[2]++;
+      }
+    }
+    if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
+      onProgress?.((runoutIndex + 1) / runouts.length);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    }
+  }
+
   const samples = outcomes[0] + outcomes[1] + outcomes[2];
-  const pct = (n: number) => (n / samples) * 100;
+  const percent = (value: number) => value / samples * 100;
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
   return {
-    win: pct(outcomes[0]), tie: pct(outcomes[1]), lose: pct(outcomes[2]), equity: pct(equity),
-    samples, exact, categories: categories.map(pct), bestHand: HAND_NAMES[topCategory],
+    win: percent(outcomes[0]), tie: percent(outcomes[1]), lose: percent(outcomes[2]), equity: percent(equity), samples,
+    categories: categories.map(percent), bestHand: HAND_NAMES[topCategory],
   };
 }
 
-function record(heroScore: Score, opponentScores: Score[], outcomes: number[], categories: number[]) {
-  const comparisons = opponentScores.map((score) => compare(heroScore, score));
-  const category = heroScore[0];
-  categories[category]++;
-  if (comparisons.some((result) => result < 0)) { outcomes[2]++; return 0; }
-  const ties = comparisons.filter((result) => result === 0).length;
-  if (ties) { outcomes[1]++; return 1 / (ties + 1); }
-  outcomes[0]++;
-  return 1;
-}
-
-export function simulate(hero: string[], board: string[], opponents: number, iterations: number): SimulationResult {
-  const used = new Set([...hero, ...board]);
+export function topBoardHands(board: string[], excluded: string[] = []): RankedBoardHand[] {
+  if (board.length < 3) return [];
+  const used = new Set([...board, ...excluded]);
   const available = DECK.filter((card) => !used.has(card));
-  const boardNeeded = 5 - board.length;
-  const outcomes = [0, 0, 0];
-  const categories = Array(9).fill(0);
-  let equity = 0;
-
-  // River/turn heads-up spots are small enough to enumerate exactly.
-  if (opponents === 1 && boardNeeded <= 1) {
-    if (boardNeeded === 0) {
-      const heroScore = evaluate([...hero, ...board]);
-      for (let i = 0; i < available.length - 1; i++) for (let j = i + 1; j < available.length; j++)
-        equity += record(heroScore, [evaluate([available[i], available[j], ...board])], outcomes, categories);
-    } else {
-      for (let r = 0; r < available.length; r++) {
-        const finalBoard = [...board, available[r]];
-        const heroScore = evaluate([...hero, ...finalBoard]);
-        for (let i = 0; i < available.length - 1; i++) {
-          if (i === r) continue;
-          for (let j = i + 1; j < available.length; j++) {
-            if (j === r) continue;
-            equity += record(heroScore, [evaluate([available[i], available[j], ...finalBoard])], outcomes, categories);
-          }
-        }
-      }
+  const hands: RankedBoardHand[] = [];
+  for (let first = 0; first < available.length - 1; first++) {
+    for (let second = first + 1; second < available.length; second++) {
+      const cards: [string, string] = [available[first], available[second]];
+      const score = evaluate([...cards, ...board]);
+      hands.push({ cards, score, handName: HAND_NAMES[score[0]] });
     }
-    return summarize(outcomes, equity, categories, true);
   }
-
-  const needed = boardNeeded + opponents * 2;
-  for (let run = 0; run < iterations; run++) {
-    const pool = [...available];
-    for (let i = 0; i < needed; i++) {
-      const j = i + Math.floor(Math.random() * (pool.length - i));
-      [pool[i], pool[j]] = [pool[j], pool[i]];
-    }
-    const finalBoard = [...board, ...pool.slice(0, boardNeeded)];
-    const heroScore = evaluate([...hero, ...finalBoard]);
-    const opponentScores = Array.from({ length: opponents }, (_, index) => {
-      const start = boardNeeded + index * 2;
-      return evaluate([pool[start], pool[start + 1], ...finalBoard]);
-    });
-    equity += record(heroScore, opponentScores, outcomes, categories);
-  }
-  return summarize(outcomes, equity, categories, false);
+  hands.sort((a, b) => compareScores(b.score, a.score) || valueOf(b.cards[0]) - valueOf(a.cards[0]) || valueOf(b.cards[1]) - valueOf(a.cards[1]));
+  return hands.slice(0, 10);
 }
 
 export function cardParts(card: string) {

@@ -15,17 +15,17 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://site.example.com"),
   title: "Poker Lab · 德州扑克胜率计算器",
-  description: "快速计算德州扑克手牌胜率、平局率和牌型概率。",
+  description: "正向枚举德州扑克全部牌局，精确计算胜率、平局率和牌型概率。",
   openGraph: {
     title: "Poker Lab · 德州扑克胜率计算器",
-    description: "选择牌面与对手人数，即刻计算胜率、底池权益和牌型分布。",
+    description: "逐一遍历全部剩余牌局，精确计算胜率、底池权益和牌型分布。",
     type: "website",
     images: [{ url: "https://site.example.com/og.png", width: 1200, height: 630, alt: "Poker Lab 德州扑克胜率计算器" }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Poker Lab · 德州扑克胜率计算器",
-    description: "选择牌面与对手人数，即刻计算胜率、底池权益和牌型分布。",
+    description: "逐一遍历全部剩余牌局，精确计算胜率、底池权益和牌型分布。",
     images: ["https://site.example.com/og.png"],
   },
   icons: {
