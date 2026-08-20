@@ -25,6 +25,7 @@ export type RankedBoardGroup = {
   score: Score;
   comboCount: number;
   patterns: Array<{ ranks: [string, string]; comboCount: number }>;
+  flushSuits: string[];
 };
 
 const valueOf = (card: string) => RANKS.indexOf(card.slice(0, -1) as (typeof RANKS)[number]) + 2;
@@ -184,10 +185,15 @@ export function topBoardGroups(board: string[], excluded: string[] = []): Ranked
     const scoreKey = hand.score.join("-");
     let group = groups.get(scoreKey);
     if (!group) {
-      group = { score: hand.score, handName: HAND_NAMES[hand.score[0]], comboCount: 0, patterns: [] };
+      group = { score: hand.score, handName: HAND_NAMES[hand.score[0]], comboCount: 0, patterns: [], flushSuits: [] };
       groups.set(scoreKey, group);
     }
     group.comboCount++;
+    if (hand.score[0] === 5 || hand.score[0] === 8) {
+      const allCards = [...hand.cards, ...board];
+      const flushSuit = SUITS.find((suit) => allCards.filter((card) => card.endsWith(suit.code)).length >= 5)?.code;
+      if (flushSuit && !group.flushSuits.includes(flushSuit)) group.flushSuits.push(flushSuit);
+    }
     const ranks = hand.cards.map((card) => card.slice(0, -1)).sort((a, b) => RANKS.indexOf(b as (typeof RANKS)[number]) - RANKS.indexOf(a as (typeof RANKS)[number])) as [string, string];
     const patternKey = ranks.join("-");
     const pattern = group.patterns.find((item) => item.ranks.join("-") === patternKey);
