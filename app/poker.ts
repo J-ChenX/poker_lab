@@ -20,12 +20,17 @@ export type ExactResult = {
   opponents: number;
   method: "exact" | "combination" | "preflop" | "preflop_combination";
 };
-export type RankedBoardGroup = {
-  handName: string;
-  score: Score;
+export type BoardVariant = {
+  key: string;
+  label: string;
   comboCount: number;
-  patterns: Array<{ ranks: [string, string]; comboCount: number }>;
-  flushSuits: string[];
+  strength: number[];
+  suitCode?: string;
+};
+export type BoardCategory = {
+  category: number;
+  name: string;
+  variants: BoardVariant[];
 };
 
 const valueOf = (card: string) => RANKS.indexOf(card.slice(0, -1) as (typeof RANKS)[number]) + 2;
@@ -167,40 +172,53 @@ export async function enumerateExact(
   };
 }
 
-export function topBoardGroups(board: string[], excluded: string[] = []): RankedBoardGroup[] {
-  if (board.length < 3) return [];
+const CATALOGUE_CATEGORIES = [8, 7, 6, 5, 4, 3, 2, 1] as const;
+const rankLabel = (value: number) => RANKS[value - 2] ?? String(value);
+
+function flushSuit(cards: string[]) {
+  return SUITS.find((suit) => cards.filter((card) => card.endsWith(suit.code)).length >= 5);
+}
+
+function variantDetails(score: Score, cards: string[]): Omit<BoardVariant, "comboCount"> {
+  const category = score[0];
+  if (category === 8) {
+    const suit = flushSuit(cards)!;
+    return { key: `${score[1]}-${suit.code}`, label: `${suit.symbol} ${rankLabel(score[1])}高同花顺`, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
+  }
+  if (category === 7) return { key: String(score[1]), label: `${rankLabel(score[1])}四条`, strength: [score[1]] };
+  if (category === 6) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}满${rankLabel(score[2])}`, strength: [score[1], score[2]] };
+  if (category === 5) {
+    const suit = flushSuit(cards)!;
+    return { key: suit.code, label: `${suit.symbol} ${suit.name}同花`, strength: [-SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
+  }
+  if (category === 4) return { key: String(score[1]), label: `${rankLabel(score[1])}高顺子`, strength: [score[1]] };
+  if (category === 3) return { key: String(score[1]), label: `${rankLabel(score[1])}三条`, strength: [score[1]] };
+  if (category === 2) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}和${rankLabel(score[2])}两对`, strength: [score[1], score[2]] };
+  return { key: String(score[1]), label: `${rankLabel(score[1])}一对`, strength: [score[1]] };
+}
+
+export function boardCategoryCatalogue(board: string[], excluded: string[] = []): BoardCategory[] {
+  const catalogue = CATALOGUE_CATEGORIES.map((category) => ({ category, name: HAND_NAMES[category], variants: [] as BoardVariant[] }));
+  if (board.length < 3) return catalogue;
   const used = new Set([...board, ...excluded]);
   const available = DECK.filter((card) => !used.has(card));
-  const hands: Array<{ cards: [string, string]; score: Score }> = [];
+  const groups = new Map<number, Map<string, BoardVariant>>(CATALOGUE_CATEGORIES.map((category) => [category, new Map()]));
   for (let first = 0; first < available.length - 1; first++) {
     for (let second = first + 1; second < available.length; second++) {
       const cards: [string, string] = [available[first], available[second]];
       const score = evaluate([...cards, ...board]);
-      hands.push({ cards, score });
+      const categoryGroups = groups.get(score[0]);
+      if (!categoryGroups) continue;
+      const details = variantDetails(score, [...cards, ...board]);
+      const existing = categoryGroups.get(details.key);
+      if (existing) existing.comboCount++;
+      else categoryGroups.set(details.key, { ...details, comboCount: 1 });
     }
   }
-  hands.sort((a, b) => compareScores(b.score, a.score) || valueOf(b.cards[0]) - valueOf(a.cards[0]) || valueOf(b.cards[1]) - valueOf(a.cards[1]));
-  const groups = new Map<string, RankedBoardGroup>();
-  for (const hand of hands) {
-    const scoreKey = hand.score.join("-");
-    let group = groups.get(scoreKey);
-    if (!group) {
-      group = { score: hand.score, handName: HAND_NAMES[hand.score[0]], comboCount: 0, patterns: [], flushSuits: [] };
-      groups.set(scoreKey, group);
-    }
-    group.comboCount++;
-    if (hand.score[0] === 5 || hand.score[0] === 8) {
-      const allCards = [...hand.cards, ...board];
-      const flushSuit = SUITS.find((suit) => allCards.filter((card) => card.endsWith(suit.code)).length >= 5)?.code;
-      if (flushSuit && !group.flushSuits.includes(flushSuit)) group.flushSuits.push(flushSuit);
-    }
-    const ranks = hand.cards.map((card) => card.slice(0, -1)).sort((a, b) => RANKS.indexOf(b as (typeof RANKS)[number]) - RANKS.indexOf(a as (typeof RANKS)[number])) as [string, string];
-    const patternKey = ranks.join("-");
-    const pattern = group.patterns.find((item) => item.ranks.join("-") === patternKey);
-    if (pattern) pattern.comboCount++;
-    else group.patterns.push({ ranks, comboCount: 1 });
+  for (const section of catalogue) {
+    section.variants = [...groups.get(section.category)!.values()].sort((a, b) => compareScores(b.strength, a.strength));
   }
-  return [...groups.values()].slice(0, 10);
+  return catalogue;
 }
 
 export function cardParts(card: string) {

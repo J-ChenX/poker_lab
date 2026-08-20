@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cardParts, enumerateExact, HAND_NAMES, RANKS, SUITS, topBoardGroups, type ExactResult } from "./poker";
+import { boardCategoryCatalogue, cardParts, enumerateExact, HAND_NAMES, RANKS, SUITS, type ExactResult } from "./poker";
 import { preflopResult } from "./preflop";
 
 type PickerMode = "hole" | "board" | null;
@@ -13,10 +13,6 @@ function PlayingCard({ card, onClick, compact = false, label, disabled = false }
       {parts ? <><span className="card-rank">{parts.rank}</span><span className="card-suit">{parts.symbol}</span></> : <><span className="plus">＋</span><small>选牌</small></>}
     </button>
   );
-}
-
-function RankPattern({ ranks, combos }: { ranks: [string, string]; combos: number }) {
-  return <span className="rank-pattern"><span><b>{ranks[0]}</b><b>{ranks[1]}</b></span><small>{combos} 种花色组合</small></span>;
 }
 
 function Ring({ value }: { value: number }) {
@@ -39,8 +35,8 @@ export default function Home() {
   const validHole = hole.filter(Boolean) as string[];
   const validBoard = board.filter(Boolean) as string[];
   const ready = validHole.length === 2 && (validBoard.length === 0 || validBoard.length >= 3);
-  const boardLeaders = useMemo(
-    () => topBoardGroups(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
+  const boardCatalogue = useMemo(
+    () => boardCategoryCatalogue(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
     [board, hole],
   );
 
@@ -149,9 +145,9 @@ export default function Home() {
         </aside>
       </section>
 
-      <section className="leaders-section">
-        <div className="leaders-intro"><p className="eyebrow">BOARD LEADERS</p><h2>当前公共牌的<br />前 10 个牌力档位</h2><p>牌力完全相同的手牌会合并在同一行；相同点数的不同花色不再重复占位，而是汇总显示组合数量。</p></div>
-        {boardLeaders.length ? <ol className="leaders-list grouped">{boardLeaders.map((group, index) => <li key={group.score.join("-")}><span className="leader-rank">{String(index + 1).padStart(2, "0")}</span><div className="leader-patterns">{group.flushSuits.length ? group.flushSuits.map((code) => { const suit = SUITS.find((item) => item.code === code)!; return <span className={`flush-summary ${code === "h" || code === "d" ? "red" : ""}`} key={code}><b>{suit.symbol}</b><span>{suit.name}{group.handName}</span><small>同花花色</small></span>; }) : <>{group.patterns.slice(0, 3).map((pattern) => <RankPattern key={pattern.ranks.join("-")} ranks={pattern.ranks} combos={pattern.comboCount} />)}{group.patterns.length > 3 && <span className="more-patterns">另有 {group.patterns.length - 3} 种点数组合</span>}</>}</div><strong>{group.handName}<small>{group.comboCount} 组并列</small></strong></li>)}</ol> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，十强牌形会在这里自动出现。</p></div>}
+      <section className="leaders-section catalogue-section">
+        <div className="leaders-intro"><p className="eyebrow">BOARD CATALOGUE</p><h2>当前公共牌的<br />完整牌型目录</h2><p>固定按同花顺、四条、葫芦、同花、顺子、三条、两对、对子排列；每一类内部再由大到小排序，并将同牌力花色组合合并。</p></div>
+        {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.map((section, index) => <article className={`catalogue-row ${section.variants.length ? "" : "empty"}`} key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{section.variants.length ? `${section.variants.length} 种牌力` : "当前无此牌型"}</small></div><div className="variant-list">{section.variants.length ? section.variants.map((variant) => <div className={`variant-chip ${variant.suitCode === "h" || variant.suitCode === "d" ? "red" : ""}`} key={variant.key}><strong>{variant.label}</strong><span>{variant.comboCount} 组底牌</span></div>) : <span className="unavailable">—</span>}</div></article>)}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 
       <section className="method-section">
