@@ -114,6 +114,7 @@ function margin95(percent: number) {
 
 const scenarios: Scenario[] = [
   { name: "河牌·单挑", hero: ["Kh", "Qh"], board: ["As", "Ah", "Ad", "4c", "2s"], opponents: 1 },
+  { name: "河牌·3人桌无放回", hero: ["As", "Kh"], board: ["10s", "9s", "8s", "6h", "6d"], opponents: 2 },
   { name: "河牌·5人桌", hero: ["As", "Kh"], board: ["10s", "9s", "8s", "6h", "6d"], opponents: 4 },
   { name: "转牌·单挑", hero: ["As", "Kh"], board: ["10s", "9s", "8s", "6h"], opponents: 1 },
   { name: "翻牌·单挑", hero: ["Qs", "Qh"], board: ["As", "Kd", "7c"], opponents: 1 },
@@ -131,15 +132,18 @@ for (let index = 0; index < selectedScenarios.length; index++) {
   const production = scenario.board.length === 0
     ? preflopResult(scenario.hero, scenario.opponents)
     : await enumerateExact(scenario.hero, scenario.board, scenario.opponents);
-  const expected: Rates = production.table ?? production;
   const monteCarlo = simulate(scenario, trials, 0x9e3779b9 + index * 0x10001);
-  const metrics = (["win", "tie", "lose", "equity"] as const).map((metric) => ({
-    metric,
-    production: expected[metric],
-    monteCarlo: monteCarlo[metric],
-    deviationPoints: monteCarlo[metric] - expected[metric],
-    margin95: margin95(monteCarlo[metric]),
-    within95: Math.abs(monteCarlo[metric] - expected[metric]) <= margin95(monteCarlo[metric]),
+  const expected: Rates | null = scenario.opponents === 1 ? production : production.table ?? null;
+  const metrics = expected ? (["win", "tie", "lose", "equity"] as const).map((metric) => ({
+      metric,
+      production: expected[metric],
+      monteCarlo: monteCarlo[metric],
+      deviationPoints: monteCarlo[metric] - expected[metric],
+      margin95: margin95(monteCarlo[metric]),
+      within95: Math.abs(monteCarlo[metric] - expected[metric]) <= margin95(monteCarlo[metric]),
+    })) : null;
+  console.log(JSON.stringify({
+    scenario: scenario.name, trials, hero: scenario.hero, board: scenario.board, opponents: scenario.opponents,
+    exactAvailable: Boolean(expected), unavailableReason: production.multiwayUnavailable, monteCarlo, metrics,
   }));
-  console.log(JSON.stringify({ scenario: scenario.name, trials, hero: scenario.hero, board: scenario.board, opponents: scenario.opponents, metrics }));
 }

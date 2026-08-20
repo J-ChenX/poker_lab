@@ -15,25 +15,17 @@ function handClass(cards: string[]) {
   return `${ranks.join("")}${cards[0].slice(-1) === cards[1].slice(-1) ? "s" : "o"}`;
 }
 
-function projectMultiway(base: Omit<ExactResult,"opponents"|"method">, opponents: number, preflop: boolean): ExactResult {
-  if (opponents === 1) return { ...base, opponents, method: preflop ? "preflop" : "exact" };
-  const winOne = base.win / 100;
-  const tieOne = base.tie / 100;
-  const unbeatenOne = winOne + tieOne;
-  const winAll = winOne ** opponents;
-  const unbeatenAll = unbeatenOne ** opponents;
-  let equity = 0;
-  const choose = (n: number, k: number) => { let value = 1; for (let i = 1; i <= k; i++) value = value * (n - i + 1) / i; return value; };
-  for (let ties = 0; ties <= opponents; ties++) equity += choose(opponents, ties) * tieOne ** ties * winOne ** (opponents - ties) / (ties + 1);
-  return { ...base, table:{ win:winAll*100, tie:(unbeatenAll-winAll)*100, lose:(1-unbeatenAll)*100, equity:equity*100 }, opponents, method:preflop ? "preflop_combination" : "combination" };
-}
-
 export function preflopResult(cards: string[], opponents: number): ExactResult {
   const key = handClass(cards);
   const rates = PREFLOP[key];
   if (!rates) throw new Error(`没有找到翻牌前牌型 ${key}`);
   const [win, tie] = rates;
-  return projectMultiway({ win, tie, lose:100-win-tie, equity:win+tie/2, samples:169, categories:Array(9).fill(0), bestHand:key }, opponents, true);
+  const base = { win, tie, lose:100-win-tie, equity:win+tie/2, samples:169, categories:Array(9).fill(0), bestHand:key, opponents, method:"preflop" as const };
+  if (opponents === 1) return base;
+  return {
+    ...base,
+    multiwayUnavailable: `${opponents + 1} 人翻牌前的无放回完整穷举规模极大；已移除把随机对手当成相互独立的幂次公式，避免给出偏低的伪精确胜率。`,
+  };
 }
 
 export const PREFLOP_CLASS_COUNT = Object.keys(PREFLOP).length;

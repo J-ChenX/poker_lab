@@ -112,11 +112,17 @@ h1 em { color:var(--green); font-family:Georgia,serif; font-weight:400; }
 .table-projection>div { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .table-projection span { color:#909a94; font-size:9px; }.table-projection strong { color:var(--lime); font-size:16px; }
 .table-projection p { margin:7px 0 0; color:#707a74; font-size:8px; line-height:1.6; }
+.table-projection.exact { border-color:#526a3e; background:#142017; }
+.table-unavailable { margin-top:18px; padding:13px 15px; border:1px solid #665b43; background:#1b1a15; }
+.table-unavailable strong { display:block; color:#f1c96a; font-size:11px; }
+.table-unavailable p { margin:7px 0; color:#a79e8b; font-size:8px; line-height:1.65; }
+.table-unavailable span { color:#777d78; font-size:8px; }
 .decision-card>div:first-child { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .decision-card p { margin:0; color:#89938d; font-size:8px; line-height:1.6; }
 .decision-card h3 { margin:0; font:400 17px Georgia,"Microsoft YaHei",serif; }
 .decision-card.raise h3,.decision-card.call h3,.positive { color:var(--lime)!important; }
 .decision-card.fold h3,.negative { color:#ff8a78!important; }
+.decision-card.unavailable h3 { color:#f1c96a; }
 .decision-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:13px; }
 .decision-metrics span { display:flex; flex-direction:column; gap:4px; color:#87918b; font-size:8px; }
 .decision-metrics b { color:white; font-size:11px; }
