@@ -194,11 +194,18 @@ function fullHouseRequirement(score: Score, board: string[]): Omit<BoardVariant,
   const label = required.length === 0
     ? "公共牌已成葫芦"
     : required.length === 1
-      ? `${rankLabel(required[0])} + 任意牌`
+      ? rankLabel(required[0])
       : required[0] === required[1]
         ? `对${rankLabel(required[0])}`
         : required.map(rankLabel).join(" ");
   return { key: `${score[1]}-${score[2]}-${label}`, label, strength: [score[1], score[2]] };
+}
+
+function quadsRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> {
+  const countOnBoard = board.filter((card) => valueOf(card) === score[1]).length;
+  const needed = Math.max(0, 4 - countOnBoard);
+  const label = needed === 0 ? "公共牌已成四条" : needed === 1 ? rankLabel(score[1]) : `对${rankLabel(score[1])}`;
+  return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
 }
 
 function straightRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> | null {
@@ -278,7 +285,7 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
     const label = missing.length ? missing.map((value) => `${rankLabel(value)}${suit.symbol}`).join(" ") : `${suit.symbol} 公共牌已成牌`;
     return { key: `${label}-${suit.code}`, label, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
-  if (category === 7) return { key: String(score[1]), label: `${rankLabel(score[1])}四条`, strength: [score[1]] };
+  if (category === 7) return quadsRequirement(score, board);
   if (category === 6) return fullHouseRequirement(score, board);
   if (category === 5) {
     const suit = flushSuit([...holeCards, ...board])!;
