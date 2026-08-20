@@ -217,6 +217,45 @@ function tripsRequirement(score: Score, board: string[]): Omit<BoardVariant, "co
   return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
 }
 
+function twoPairRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> {
+  const boardCounts = new Map<number, number>();
+  for (const card of board) boardCounts.set(valueOf(card), (boardCounts.get(valueOf(card)) ?? 0) + 1);
+  const required: number[] = [];
+  for (const rank of [score[1], score[2]]) {
+    for (let count = boardCounts.get(rank) ?? 0; count < 2; count++) required.push(rank);
+  }
+  const label = required.length === 0
+    ? "公共牌已成两对"
+    : required.length === 1
+      ? rankLabel(required[0])
+      : required[0] === required[1]
+        ? `对${rankLabel(required[0])}`
+        : required.map(rankLabel).join(" ");
+  return { key: `${score[1]}-${score[2]}-${label}`, label, strength: [score[1], score[2]] };
+}
+
+function pairedBoardTwoPairRequirements(board: string[], excluded: string[]): BoardVariant[] | null {
+  const boardCounts = new Map<number, number>();
+  for (const card of board) boardCounts.set(valueOf(card), (boardCounts.get(valueOf(card)) ?? 0) + 1);
+  const boardPairs = [...boardCounts.entries()].filter(([, count]) => count === 2).map(([rank]) => rank);
+  if (boardPairs.length !== 1) return null;
+  const pairRank = boardPairs[0];
+  const used = new Set([...board, ...excluded]);
+  const available = DECK.filter((card) => !used.has(card));
+  const variants: BoardVariant[] = [];
+  for (let rank = 14; rank >= 2; rank--) {
+    if (rank === pairRank) continue;
+    const countOnBoard = boardCounts.get(rank) ?? 0;
+    const remaining = available.filter((card) => valueOf(card) === rank).length;
+    if (countOnBoard === 0 && remaining >= 2) {
+      variants.push({ key: `pair-${rank}`, label: `对${rankLabel(rank)}`, comboCount: remaining * (remaining - 1) / 2, strength: [Math.max(rank, pairRank), Math.min(rank, pairRank)] });
+    } else if (countOnBoard === 1 && remaining >= 1) {
+      variants.push({ key: `match-${rank}`, label: rankLabel(rank), comboCount: remaining * (available.length - remaining), strength: [Math.max(rank, pairRank), Math.min(rank, pairRank)] });
+    }
+  }
+  return variants.sort((a, b) => compareScores(b.strength, a.strength));
+}
+
 function variantDetails(score: Score, holeCards: [string, string], board: string[]): Omit<BoardVariant, "comboCount"> | null {
   const category = score[0];
   if (category === 8) {
@@ -237,7 +276,7 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
   }
   if (category === 4) return straightRequirement(score, board);
   if (category === 3) return tripsRequirement(score, board);
-  if (category === 2) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}和${rankLabel(score[2])}两对`, strength: [score[1], score[2]] };
+  if (category === 2) return twoPairRequirement(score, board);
   return { key: String(score[1]), label: `${rankLabel(score[1])}一对`, strength: [score[1]] };
 }
 
@@ -261,7 +300,8 @@ export function boardCategoryCatalogue(board: string[], excluded: string[] = [])
     }
   }
   for (const section of catalogue) {
-    section.variants = [...groups.get(section.category)!.values()].sort((a, b) => compareScores(b.strength, a.strength));
+    const pairedBoardVariants = section.category === 2 ? pairedBoardTwoPairRequirements(board, excluded) : null;
+    section.variants = pairedBoardVariants ?? [...groups.get(section.category)!.values()].sort((a, b) => compareScores(b.strength, a.strength));
   }
   return catalogue;
 }

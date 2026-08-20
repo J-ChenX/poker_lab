@@ -146,7 +146,7 @@ export default function Home() {
       </section>
 
       <section className="leaders-section catalogue-section">
-        <div className="leaders-intro"><p className="eyebrow">BOARD CATALOGUE</p><h2>当前公共牌的<br />完整牌型目录</h2><p>固定按同花顺、四条、葫芦、同花、顺子、三条、两对、对子排列；每一类内部再由大到小排序，并将同牌力花色组合合并。</p></div>
+        <div className="leaders-intro"><p className="eyebrow">BOARD CATALOGUE</p><h2>当前公共牌的<br />完整牌型目录</h2><p>固定按同花顺、四条、葫芦、同花、顺子、三条、两对、对子排列；每一类显示实际所需底牌并由大到小排序。</p></div>
         {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.map((section, index) => <article className={`catalogue-row ${section.variants.length ? "" : "empty"}`} key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{section.variants.length ? `${section.variants.length} 种牌力` : "当前无此牌型"}</small></div><div className="variant-list">{section.variants.length ? section.variants.map((variant) => <div className={`variant-chip ${variant.suitCode === "h" || variant.suitCode === "d" ? "red" : ""}`} key={variant.key}><strong>{variant.label}</strong><span>{variant.comboCount} 组底牌</span></div>) : <span className="unavailable">—</span>}</div></article>)}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 
