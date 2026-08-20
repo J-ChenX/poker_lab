@@ -18,7 +18,7 @@ export type ExactResult = {
   categories: number[];
   bestHand: string;
   opponents: number;
-  method: "exact" | "combination";
+  method: "exact" | "combination" | "preflop" | "preflop_combination";
 };
 export type RankedBoardGroup = {
   handName: string;
