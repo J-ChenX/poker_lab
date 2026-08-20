@@ -201,6 +201,22 @@ function fullHouseRequirement(score: Score, board: string[]): Omit<BoardVariant,
   return { key: `${score[1]}-${score[2]}-${label}`, label, strength: [score[1], score[2]] };
 }
 
+function straightRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> | null {
+  const window = straightWindow(score[1]);
+  const boardValues = new Set(board.map(valueOf));
+  const missing = window.filter((value) => !boardValues.has(value));
+  if (missing.length === 2 && window.indexOf(missing[1]) - window.indexOf(missing[0]) !== 1) return null;
+  const label = missing.length ? missing.map(rankLabel).join("") : "公共牌已成顺子";
+  return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
+}
+
+function tripsRequirement(score: Score, board: string[]): Omit<BoardVariant, "comboCount"> {
+  const boardCount = board.filter((card) => valueOf(card) === score[1]).length;
+  const needed = Math.max(0, 3 - boardCount);
+  const label = needed === 0 ? "公共牌已成三条" : needed === 1 ? rankLabel(score[1]) : `对${rankLabel(score[1])}`;
+  return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
+}
+
 function variantDetails(score: Score, holeCards: [string, string], board: string[]): Omit<BoardVariant, "comboCount"> | null {
   const category = score[0];
   if (category === 8) {
@@ -219,8 +235,8 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
     const suit = flushSuit([...holeCards, ...board])!;
     return { key: suit.code, label: `${suit.symbol} ${suit.name}同花`, strength: [-SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
-  if (category === 4) return { key: String(score[1]), label: `${rankLabel(score[1])}高顺子`, strength: [score[1]] };
-  if (category === 3) return { key: String(score[1]), label: `${rankLabel(score[1])}三条`, strength: [score[1]] };
+  if (category === 4) return straightRequirement(score, board);
+  if (category === 3) return tripsRequirement(score, board);
   if (category === 2) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}和${rankLabel(score[2])}两对`, strength: [score[1], score[2]] };
   return { key: String(score[1]), label: `${rankLabel(score[1])}一对`, strength: [score[1]] };
 }
