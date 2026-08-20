@@ -179,16 +179,26 @@ function flushSuit(cards: string[]) {
   return SUITS.find((suit) => cards.filter((card) => card.endsWith(suit.code)).length >= 5);
 }
 
-function variantDetails(score: Score, cards: string[]): Omit<BoardVariant, "comboCount"> {
+function straightWindow(high: number) {
+  return high === 5 ? [14, 2, 3, 4, 5] : Array.from({ length: 5 }, (_, index) => high - 4 + index);
+}
+
+function variantDetails(score: Score, holeCards: [string, string], board: string[]): Omit<BoardVariant, "comboCount"> | null {
   const category = score[0];
   if (category === 8) {
-    const suit = flushSuit(cards)!;
-    return { key: `${score[1]}-${suit.code}`, label: `${suit.symbol} ${rankLabel(score[1])}高同花顺`, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
+    const allCards = [...holeCards, ...board];
+    const suit = flushSuit(allCards)!;
+    const window = straightWindow(score[1]);
+    const suitedBoardValues = new Set(board.filter((card) => card.endsWith(suit.code)).map(valueOf));
+    const missing = window.filter((value) => !suitedBoardValues.has(value));
+    if (missing.length === 2 && window.indexOf(missing[1]) - window.indexOf(missing[0]) !== 1) return null;
+    const label = missing.length ? missing.map((value) => `${rankLabel(value)}${suit.symbol}`).join(" ") : `${suit.symbol} 公共牌已成牌`;
+    return { key: `${label}-${suit.code}`, label, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
   if (category === 7) return { key: String(score[1]), label: `${rankLabel(score[1])}四条`, strength: [score[1]] };
   if (category === 6) return { key: `${score[1]}-${score[2]}`, label: `${rankLabel(score[1])}满${rankLabel(score[2])}`, strength: [score[1], score[2]] };
   if (category === 5) {
-    const suit = flushSuit(cards)!;
+    const suit = flushSuit([...holeCards, ...board])!;
     return { key: suit.code, label: `${suit.symbol} ${suit.name}同花`, strength: [-SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
   if (category === 4) return { key: String(score[1]), label: `${rankLabel(score[1])}高顺子`, strength: [score[1]] };
@@ -209,7 +219,8 @@ export function boardCategoryCatalogue(board: string[], excluded: string[] = [])
       const score = evaluate([...cards, ...board]);
       const categoryGroups = groups.get(score[0]);
       if (!categoryGroups) continue;
-      const details = variantDetails(score, [...cards, ...board]);
+      const details = variantDetails(score, cards, board);
+      if (!details) continue;
       const existing = categoryGroups.get(details.key);
       if (existing) existing.comboCount++;
       else categoryGroups.set(details.key, { ...details, comboCount: 1 });
