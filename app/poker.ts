@@ -14,6 +14,10 @@ export type ExactResult = {
   tie: number;
   lose: number;
   equity: number;
+  winHands?: number;
+  tieHands?: number;
+  loseHands?: number;
+  table?: { win: number; tie: number; lose: number; equity: number };
   samples: number;
   categories: number[];
   bestHand: string;
@@ -138,6 +142,7 @@ export async function enumerateExact(
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
   const base = {
     win: percent(outcomes[0]), tie: percent(outcomes[1]), lose: percent(outcomes[2]), equity: percent(equity), samples,
+    winHands: outcomes[0], tieHands: outcomes[1], loseHands: outcomes[2],
     categories: categories.map(percent), bestHand: HAND_NAMES[topCategory],
   };
   if (opponents === 1) return { ...base, opponents, method: "exact" };
@@ -163,10 +168,7 @@ export async function enumerateExact(
   }
   return {
     ...base,
-    win: winAll * 100,
-    tie: tieAny * 100,
-    lose: loseAny * 100,
-    equity: multiwayEquity * 100,
+    table: { win: winAll * 100, tie: tieAny * 100, lose: loseAny * 100, equity: multiwayEquity * 100 },
     opponents,
     method: "combination",
   };

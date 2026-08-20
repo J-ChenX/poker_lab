@@ -25,7 +25,7 @@ function projectMultiway(base: Omit<ExactResult,"opponents"|"method">, opponents
   let equity = 0;
   const choose = (n: number, k: number) => { let value = 1; for (let i = 1; i <= k; i++) value = value * (n - i + 1) / i; return value; };
   for (let ties = 0; ties <= opponents; ties++) equity += choose(opponents, ties) * tieOne ** ties * winOne ** (opponents - ties) / (ties + 1);
-  return { ...base, win:winAll*100, tie:(unbeatenAll-winAll)*100, lose:(1-unbeatenAll)*100, equity:equity*100, opponents, method:preflop ? "preflop_combination" : "combination" };
+  return { ...base, table:{ win:winAll*100, tie:(unbeatenAll-winAll)*100, lose:(1-unbeatenAll)*100, equity:equity*100 }, opponents, method:preflop ? "preflop_combination" : "combination" };
 }
 
 export function preflopResult(cards: string[], opponents: number): ExactResult {

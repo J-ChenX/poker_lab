@@ -80,13 +80,14 @@ export default function Home() {
   const cardsUsedElsewhere = new Set(pickerMode === "hole" ? validBoard : validHole);
   const buttonCopy = running ? `正在正向枚举 ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : validBoard.length === 0 ? "计算翻牌前胜率" : "开始精确计算";
   const potOdds = callAmount > 0 ? callAmount / (potSize + callAmount) * 100 : 0;
-  const equityEdge = result ? result.equity - potOdds : 0;
-  const callEv = result ? result.equity / 100 * (potSize + callAmount) - callAmount : 0;
+  const decisionEquity = result?.table?.equity ?? result?.equity ?? 0;
+  const equityEdge = result ? decisionEquity - potOdds : 0;
+  const callEv = result ? decisionEquity / 100 * (potSize + callAmount) - callAmount : 0;
   const decision = !result ? null : callAmount <= 0
-    ? { label: result.equity >= 55 ? "可以主动下注或加注" : "可以过牌观察", tone: result.equity >= 55 ? "raise" : "check" }
+    ? { label: decisionEquity >= 55 ? "可以主动下注或加注" : "可以过牌观察", tone: decisionEquity >= 55 ? "raise" : "check" }
     : equityEdge < 0
       ? { label: "不建议跟注", tone: "fold" }
-      : result.equity >= 55 && equityEdge >= 10
+      : decisionEquity >= 55 && equityEdge >= 10
         ? { label: "优先考虑加注", tone: "raise" }
         : { label: "可以跟注", tone: "call" };
 
@@ -131,15 +132,16 @@ export default function Home() {
 
         <aside className={`result-panel ${result ? "has-result" : ""}`} aria-live="polite">
           {result ? <>
-            <div className="result-top"><div><p className="eyebrow">DETERMINISTIC SHOWDOWN</p><h2>{result.opponents === 1 ? "精确胜率" : `${result.opponents + 1} 人胜率`}</h2></div><span className="method-badge">{result.method === "preflop" ? "169 类穷举查表" : result.method === "preflop_combination" ? "翻牌前查表 · 多人组合" : result.method === "exact" ? `${result.samples.toLocaleString()} 种全量牌局` : `${result.samples.toLocaleString()} 种基础牌局 · 组合推算`}</span></div>
-            <Ring value={result.equity} />
-            <p className="result-label">底池权益 · 已计入多人平局分池</p>
+            <div className="result-top"><div><p className="eyebrow">HAND-BY-HAND COMPARISON</p><h2>逐手牌胜率</h2></div><span className="method-badge">{result.method.startsWith("preflop") ? "169 类穷举查表" : `${result.samples.toLocaleString()} 种牌局逐一比较`}</span></div>
+            <Ring value={result.win} />
+            <p className="result-label">胜率 = 比你小的牌 ÷ 全部可用牌</p>
             <div className="outcome-list">
-              <div><span><i className="dot win" />获胜</span><strong>{result.win.toFixed(2)}%</strong></div>
-              <div><span><i className="dot tie" />平局</span><strong>{result.tie.toFixed(2)}%</strong></div>
-              <div><span><i className="dot lose" />落败</span><strong>{result.lose.toFixed(2)}%</strong></div>
+              <div><span><i className="dot win" />比你小 · 胜</span><strong>{result.win.toFixed(2)}%</strong>{result.winHands !== undefined && <small>{result.winHands.toLocaleString()} 手</small>}</div>
+              <div><span><i className="dot tie" />完全相同 · 平</span><strong>{result.tie.toFixed(2)}%</strong>{result.tieHands !== undefined && <small>{result.tieHands.toLocaleString()} 手</small>}</div>
+              <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
-            {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>手牌权益 <b>{result.equity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
+            {result.table && <div className="table-projection"><div><span>{result.opponents + 1} 人桌组合参考</span><strong>{result.table.win.toFixed(2)}%</strong></div><p>击败全部对手 {result.table.win.toFixed(2)}% · 至少一人同牌 {result.table.tie.toFixed(2)}% · 至少一人更强 {result.table.lose.toFixed(2)}%</p></div>}
+            {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
             {result.categories.some((value) => value > 0) ? <div className="distribution"><div className="distribution-head"><h3>最终牌型分布</h3><span>最常见：{result.bestHand}</span></div>{HAND_NAMES.map((name, index) => result.categories[index] > .004 && <div className="hand-row" key={name}><span>{name}</span><div><i style={{ width: `${Math.max(result.categories[index], .8)}%` }} /></div><strong>{result.categories[index].toFixed(1)}%</strong></div>)}</div> : <div className="preflop-note"><span>{result.bestHand}</span><p>翻牌前结果来自 169 类起手牌穷举表；发出翻牌后可查看最终牌型分布。</p></div>}
           </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EXACT MODE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "点击开始后，将完整遍历所有剩余牌局，不做随机抽样。" : "只选择两张底牌即可计算；公共牌仍支持一次多选、再次点击取消。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
         </aside>
