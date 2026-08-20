@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { cardParts, enumerateExact, HAND_NAMES, RANKS, SUITS, topBoardHands, type ExactResult } from "./poker";
+import { cardParts, enumerateExact, HAND_NAMES, RANKS, SUITS, topBoardGroups, type ExactResult } from "./poker";
 
 type PickerMode = "hole" | "board" | null;
 
@@ -14,9 +14,8 @@ function PlayingCard({ card, onClick, compact = false, label, disabled = false }
   );
 }
 
-function CardToken({ card }: { card: string }) {
-  const parts = cardParts(card);
-  return <span className={`card-token ${parts.code === "h" || parts.code === "d" ? "red" : ""}`}><b>{parts.rank}</b>{parts.symbol}</span>;
+function RankPattern({ ranks, combos }: { ranks: [string, string]; combos: number }) {
+  return <span className="rank-pattern"><span><b>{ranks[0]}</b><b>{ranks[1]}</b></span><small>{combos} 种花色组合</small></span>;
 }
 
 function Ring({ value }: { value: number }) {
@@ -32,12 +31,13 @@ export default function Home() {
   const [result, setResult] = useState<ExactResult | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [players, setPlayers] = useState(2);
 
   const validHole = hole.filter(Boolean) as string[];
   const validBoard = board.filter(Boolean) as string[];
   const ready = validHole.length === 2 && validBoard.length >= 3;
   const boardLeaders = useMemo(
-    () => topBoardHands(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
+    () => topBoardGroups(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
     [board, hole],
   );
 
@@ -65,13 +65,13 @@ export default function Home() {
   const calculate = async () => {
     if (!ready || running) return;
     setRunning(true); setProgress(0); setResult(null);
-    try { setResult(await enumerateExact(validHole, validBoard, setProgress)); }
+    try { setResult(await enumerateExact(validHole, validBoard, players - 1, setProgress)); }
     finally { setRunning(false); setProgress(1); }
   };
 
   const reset = () => {
     if (running) return;
-    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0);
+    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayers(2);
   };
 
   const pickerLimit = pickerMode === "hole" ? 2 : 5;
@@ -87,7 +87,7 @@ export default function Home() {
 
       <section className="hero">
         <div><p className="eyebrow">EXACT HOLD&apos;EM CALCULATOR</p><h1>每一种可能，<br /><em>全部算进去。</em></h1></div>
-        <p className="hero-copy">选择底牌和至少三张公共牌，计算器逐一遍历所有后续公共牌与对手手牌，给出没有抽样误差的单挑结果。</p>
+        <p className="hero-copy">选择底牌、至少三张公共牌和玩家人数。计算器先完整遍历后续公共牌与随机对手手牌，再用确定性组合公式推算多人结果。</p>
       </section>
 
       <section className="workspace" id="calculator">
@@ -105,7 +105,7 @@ export default function Home() {
 
           <div className="settings-panel exact-settings">
             <div className="setting exact-note"><div><span className="step">03</span><div><h3>正向精确枚举</h3><p>覆盖全部剩余公共牌 × 全部对手两张牌</p></div></div><span className="verified-mark">✓ 无随机数</span></div>
-            <div className="setting exact-note"><div><span className="step">04</span><div><h3>单挑 · 随机范围</h3><p>对手可能持有任意两张未出现的牌</p></div></div><span className="verified-mark neutral">1 VS 1</span></div>
+            <div className="setting exact-note"><div><span className="step">04</span><div><h3>总玩家人数</h3><p>包含你自己 · 支持 2–9 人</p></div></div><label className="player-input"><span>人数</span><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 2); setResult(null); }} /></label></div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
             {!ready && <p className="calculation-hint">精确计算从翻牌圈开始；请选择完整的 2 张底牌和至少 3 张公共牌。</p>}
           </div>
@@ -113,9 +113,9 @@ export default function Home() {
 
         <aside className={`result-panel ${result ? "has-result" : ""}`} aria-live="polite">
           {result ? <>
-            <div className="result-top"><div><p className="eyebrow">EXACT SHOWDOWN</p><h2>精确胜率</h2></div><span className="method-badge">{result.samples.toLocaleString()} 种牌局</span></div>
+            <div className="result-top"><div><p className="eyebrow">DETERMINISTIC SHOWDOWN</p><h2>{result.method === "exact" ? "精确胜率" : `${result.opponents + 1} 人胜率`}</h2></div><span className="method-badge">{result.method === "exact" ? `${result.samples.toLocaleString()} 种全量牌局` : `${result.samples.toLocaleString()} 种基础牌局 · 组合推算`}</span></div>
             <Ring value={result.equity} />
-            <p className="result-label">底池权益 · 已计入平局分池</p>
+            <p className="result-label">底池权益 · 已计入多人平局分池</p>
             <div className="outcome-list">
               <div><span><i className="dot win" />获胜</span><strong>{result.win.toFixed(2)}%</strong></div>
               <div><span><i className="dot tie" />平局</span><strong>{result.tie.toFixed(2)}%</strong></div>
@@ -127,13 +127,13 @@ export default function Home() {
       </section>
 
       <section className="leaders-section">
-        <div className="leaders-intro"><p className="eyebrow">BOARD LEADERS</p><h2>当前公共牌的<br />最强 10 组手牌</h2><p>从所有尚未出现的两张手牌中，按当前已成牌力由强到弱排列。已知的你的底牌不会出现在榜单中。</p></div>
-        {boardLeaders.length ? <ol className="leaders-list">{boardLeaders.map((hand, index) => <li key={hand.cards.join("")}><span className="leader-rank">{String(index + 1).padStart(2, "0")}</span><div className="leader-cards"><CardToken card={hand.cards[0]} /><CardToken card={hand.cards[1]} /></div><strong>{hand.handName}</strong></li>)}</ol> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，十强牌形会在这里自动出现。</p></div>}
+        <div className="leaders-intro"><p className="eyebrow">BOARD LEADERS</p><h2>当前公共牌的<br />前 10 个牌力档位</h2><p>牌力完全相同的手牌会合并在同一行；相同点数的不同花色不再重复占位，而是汇总显示组合数量。</p></div>
+        {boardLeaders.length ? <ol className="leaders-list grouped">{boardLeaders.map((group, index) => <li key={group.score.join("-")}><span className="leader-rank">{String(index + 1).padStart(2, "0")}</span><div className="leader-patterns">{group.patterns.slice(0, 3).map((pattern) => <RankPattern key={pattern.ranks.join("-")} ranks={pattern.ranks} combos={pattern.comboCount} />)}{group.patterns.length > 3 && <span className="more-patterns">另有 {group.patterns.length - 3} 种点数组合</span>}</div><strong>{group.handName}<small>{group.comboCount} 组并列</small></strong></li>)}</ol> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，十强牌形会在这里自动出现。</p></div>}
       </section>
 
       <section className="method-section">
         <div><p className="eyebrow">HOW IT WORKS</p><h2>不是模拟，<br />是穷尽所有可能。</h2></div>
-        <div className="method-copy"><p>程序固定已知牌，从剩余牌堆正向生成每一种合法的转牌、河牌与对手两张牌，并逐局比较七张牌中的最佳五张。每一种结果都被计数一次，因此重复计算会得到完全相同的答案。</p><p className="fine-print">为了保持浏览器内可完成的精确计算，本模式限定为单挑并从翻牌圈开始。结果假设对手在所有未出现的两张牌中等概率持牌，不包含位置和下注范围。</p></div>
+        <div className="method-copy"><p>程序固定已知牌，从剩余牌堆正向生成每一种合法的转牌、河牌与单个对手两张牌，并逐局比较最佳五张。多人桌再由这张完整概率表通过封闭组合公式推导，过程不调用随机数，因此重复计算完全一致。</p><p className="fine-print">两人桌为无放回全量精确枚举；多人桌为确定性组合推算，忽略不同对手手牌之间很小的阻断相关性。所有对手均按任意两张未出现的牌等概率持牌，不包含位置和下注范围。</p></div>
       </section>
 
       {pickerMode && <div className="picker-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerMode(null); }}>

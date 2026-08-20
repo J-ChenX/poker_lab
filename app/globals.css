@@ -75,3 +75,18 @@ h1 em { color:var(--green); font-family:Georgia,serif; font-weight:400; }
 @media(max-width:1050px){.leaders-section{grid-template-columns:1fr}.leaders-intro{border-right:0;border-bottom:1px solid var(--line);padding:42px 0}.leaders-list{padding-left:0}}
 @media(max-width:760px){.calculation-hint{grid-column:1}.leaders-section{margin-left:20px;margin-right:20px}.leaders-list{grid-template-columns:1fr}.leaders-list li:nth-child(n+6){display:none}}
 @media(max-width:520px){.picker-foot{gap:8px}.picker-foot>span{display:none}.confirm-cards{margin-left:auto}.leaders-section{margin-left:12px;margin-right:12px}.leaders-intro{padding:34px 10px}.leaders-list li{grid-template-columns:25px 1fr auto}}
+.leaders-list.grouped { grid-template-columns:1fr; }
+.leaders-list.grouped li { min-height:68px; }
+.leader-patterns { display:flex; align-items:center; flex-wrap:wrap; gap:7px; padding:8px 0; }
+.rank-pattern { display:flex; align-items:center; gap:7px; background:white; border:1px solid #d2d0c7; padding:5px 7px; }
+.rank-pattern>span { display:flex; gap:3px; }
+.rank-pattern b { width:22px; height:27px; display:grid; place-items:center; border:1px solid #dedcd4; border-radius:3px; font:700 11px Georgia,serif; }
+.rank-pattern small,.more-patterns { color:#888d87; font-size:8px; white-space:nowrap; }
+.leaders-list.grouped li>strong { display:flex; flex-direction:column; align-items:flex-end; gap:4px; }
+.leaders-list.grouped li>strong small { color:#959a94; font-size:8px; font-weight:400; white-space:nowrap; }
+@media(max-width:760px){.leaders-list.grouped li:nth-child(n+6){display:grid}.leader-patterns{gap:5px}.rank-pattern:nth-child(n+3){display:none}}
+@media(max-width:520px){.leaders-list.grouped li{grid-template-columns:22px 1fr auto;gap:7px}.rank-pattern small{display:none}.leaders-list.grouped li>strong{font-size:9px}}
+.player-input { display:flex; align-items:center; border:1px solid var(--line); background:white; height:34px; }
+.player-input span { color:#8a8f89; font-size:8px; padding:0 8px; border-right:1px solid var(--line); }
+.player-input input { width:48px; height:32px; border:0; background:transparent; text-align:center; color:var(--green); font-weight:800; outline:none; }
+.player-input input:focus { box-shadow:inset 0 0 0 2px var(--green); }

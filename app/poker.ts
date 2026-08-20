@@ -17,8 +17,15 @@ export type ExactResult = {
   samples: number;
   categories: number[];
   bestHand: string;
+  opponents: number;
+  method: "exact" | "combination";
 };
-export type RankedBoardHand = { cards: [string, string]; handName: string; score: Score };
+export type RankedBoardGroup = {
+  handName: string;
+  score: Score;
+  comboCount: number;
+  patterns: Array<{ ranks: [string, string]; comboCount: number }>;
+};
 
 const valueOf = (card: string) => RANKS.indexOf(card.slice(0, -1) as (typeof RANKS)[number]) + 2;
 
@@ -86,6 +93,7 @@ function combinations(cards: string[], size: number) {
 export async function enumerateExact(
   hero: string[],
   board: string[],
+  opponents = 1,
   onProgress?: (progress: number) => void,
 ): Promise<ExactResult> {
   if (hero.length !== 2 || board.length < 3 || board.length > 5) throw new Error("精确枚举需要两张底牌和至少三张公共牌");
@@ -122,26 +130,71 @@ export async function enumerateExact(
   const samples = outcomes[0] + outcomes[1] + outcomes[2];
   const percent = (value: number) => value / samples * 100;
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
-  return {
+  const base = {
     win: percent(outcomes[0]), tie: percent(outcomes[1]), lose: percent(outcomes[2]), equity: percent(equity), samples,
     categories: categories.map(percent), bestHand: HAND_NAMES[topCategory],
   };
+  if (opponents === 1) return { ...base, opponents, method: "exact" };
+
+  // Deterministic multiway projection from the exhaustive one-opponent table.
+  // This closed form has no sampling noise; it treats opponent hand outcomes as
+  // independent after the known-card removal performed above.
+  const winOne = base.win / 100;
+  const tieOne = base.tie / 100;
+  const unbeatenOne = winOne + tieOne;
+  const winAll = winOne ** opponents;
+  const unbeatenAll = unbeatenOne ** opponents;
+  const tieAny = unbeatenAll - winAll;
+  const loseAny = 1 - unbeatenAll;
+  let multiwayEquity = 0;
+  const choose = (n: number, k: number) => {
+    let value = 1;
+    for (let index = 1; index <= k; index++) value = value * (n - index + 1) / index;
+    return value;
+  };
+  for (let ties = 0; ties <= opponents; ties++) {
+    multiwayEquity += choose(opponents, ties) * tieOne ** ties * winOne ** (opponents - ties) / (ties + 1);
+  }
+  return {
+    ...base,
+    win: winAll * 100,
+    tie: tieAny * 100,
+    lose: loseAny * 100,
+    equity: multiwayEquity * 100,
+    opponents,
+    method: "combination",
+  };
 }
 
-export function topBoardHands(board: string[], excluded: string[] = []): RankedBoardHand[] {
+export function topBoardGroups(board: string[], excluded: string[] = []): RankedBoardGroup[] {
   if (board.length < 3) return [];
   const used = new Set([...board, ...excluded]);
   const available = DECK.filter((card) => !used.has(card));
-  const hands: RankedBoardHand[] = [];
+  const hands: Array<{ cards: [string, string]; score: Score }> = [];
   for (let first = 0; first < available.length - 1; first++) {
     for (let second = first + 1; second < available.length; second++) {
       const cards: [string, string] = [available[first], available[second]];
       const score = evaluate([...cards, ...board]);
-      hands.push({ cards, score, handName: HAND_NAMES[score[0]] });
+      hands.push({ cards, score });
     }
   }
   hands.sort((a, b) => compareScores(b.score, a.score) || valueOf(b.cards[0]) - valueOf(a.cards[0]) || valueOf(b.cards[1]) - valueOf(a.cards[1]));
-  return hands.slice(0, 10);
+  const groups = new Map<string, RankedBoardGroup>();
+  for (const hand of hands) {
+    const scoreKey = hand.score.join("-");
+    let group = groups.get(scoreKey);
+    if (!group) {
+      group = { score: hand.score, handName: HAND_NAMES[hand.score[0]], comboCount: 0, patterns: [] };
+      groups.set(scoreKey, group);
+    }
+    group.comboCount++;
+    const ranks = hand.cards.map((card) => card.slice(0, -1)).sort((a, b) => RANKS.indexOf(b as (typeof RANKS)[number]) - RANKS.indexOf(a as (typeof RANKS)[number])) as [string, string];
+    const patternKey = ranks.join("-");
+    const pattern = group.patterns.find((item) => item.ranks.join("-") === patternKey);
+    if (pattern) pattern.comboCount++;
+    else group.patterns.push({ ranks, comboCount: 1 });
+  }
+  return [...groups.values()].slice(0, 10);
 }
 
 export function cardParts(card: string) {
