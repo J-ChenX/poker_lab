@@ -144,6 +144,6 @@ for (let index = 0; index < selectedScenarios.length; index++) {
     })) : null;
   console.log(JSON.stringify({
     scenario: scenario.name, trials, hero: scenario.hero, board: scenario.board, opponents: scenario.opponents,
-    exactAvailable: Boolean(expected), unavailableReason: production.multiwayUnavailable, monteCarlo, metrics,
+    productionMethod: scenario.opponents === 1 ? production.method : production.table?.method, monteCarlo, metrics,
   }));
 }

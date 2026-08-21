@@ -22,12 +22,12 @@ export type ExactResult = {
     tie: number;
     lose: number;
     equity: number;
-    samples: number;
-    winHands: number;
-    tieHands: number;
-    loseHands: number;
+    method: "exact" | "conditional_power" | "preflop_power";
+    samples?: number;
+    winHands?: number;
+    tieHands?: number;
+    loseHands?: number;
   };
-  multiwayUnavailable?: string;
   samples: number;
   categories: number[];
   bestHand: string;
@@ -136,13 +136,22 @@ export function exactMultiwayDealCount(boardLength: number, opponents: number) {
   return chooseBigInt(cardsBeforeRunout, missingBoard) * matchingCount(45, opponents);
 }
 
-function compactDealCount(value: bigint) {
-  const raw = value.toString();
-  if (raw.length <= 9) return Number(value).toLocaleString("zh-CN");
-  return `${raw[0]}.${raw.slice(1, 3)}×10^${raw.length - 1}`;
-}
-
 type ClassifiedHand = { first: number; second: number; outcome: -1 | 0 | 1 };
+
+export function independentOpponentApproximation(winPercent: number, tiePercent: number, opponents: number) {
+  const winOne = winPercent / 100;
+  const tieOne = tiePercent / 100;
+  const unbeatenOne = winOne + tieOne;
+  const win = winOne ** opponents;
+  const unbeaten = unbeatenOne ** opponents;
+  let equity = 0;
+  let combinations = 1;
+  for (let ties = 0; ties <= opponents; ties++) {
+    if (ties > 0) combinations = combinations * (opponents - ties + 1) / ties;
+    equity += combinations * tieOne ** ties * winOne ** (opponents - ties) / (ties + 1);
+  }
+  return { win: win * 100, tie: (unbeaten - win) * 100, lose: (1 - unbeaten) * 100, equity: equity * 100 };
+}
 
 async function enumerateTwoOpponents(
   hero: string[],
@@ -192,7 +201,7 @@ async function enumerateTwoOpponents(
   const percent = (value: number) => value / samples * 100;
   return {
     win: percent(wins), tie: percent(ties), lose: percent(losses), equity: percent(equity),
-    samples, winHands: wins, tieHands: ties, loseHands: losses,
+    samples, winHands: wins, tieHands: ties, loseHands: losses, method: "exact" as const,
   };
 }
 
@@ -211,6 +220,7 @@ export async function enumerateExact(
   const willEnumerateTwoOpponents = opponents === 2 && dealCount <= MULTIWAY_EXACT_LIMIT;
   const outcomes = [0, 0, 0];
   const categories = Array(9).fill(0) as number[];
+  const projected = { win: 0, tie: 0, lose: 0, equity: 0 };
   let equity = 0;
 
   for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
@@ -219,15 +229,28 @@ export async function enumerateExact(
     const opponentDeck = available.filter((card) => !blocked.has(card));
     const finalBoard = [...board, ...runout];
     const heroScore = evaluate([...hero, ...finalBoard]);
+    const runoutOutcomes = [0, 0, 0];
     for (let first = 0; first < opponentDeck.length - 1; first++) {
       for (let second = first + 1; second < opponentDeck.length; second++) {
         const opponentScore = evaluate([opponentDeck[first], opponentDeck[second], ...finalBoard]);
         const comparison = compareScores(heroScore, opponentScore);
         categories[heroScore[0]]++;
-        if (comparison > 0) { outcomes[0]++; equity += 1; }
-        else if (comparison === 0) { outcomes[1]++; equity += .5; }
-        else outcomes[2]++;
+        if (comparison > 0) { outcomes[0]++; runoutOutcomes[0]++; equity += 1; }
+        else if (comparison === 0) { outcomes[1]++; runoutOutcomes[1]++; equity += .5; }
+        else { outcomes[2]++; runoutOutcomes[2]++; }
       }
+    }
+    if (opponents > 1) {
+      const runoutHands = runoutOutcomes[0] + runoutOutcomes[1] + runoutOutcomes[2];
+      const runoutProjection = independentOpponentApproximation(
+        runoutOutcomes[0] / runoutHands * 100,
+        runoutOutcomes[1] / runoutHands * 100,
+        opponents,
+      );
+      projected.win += runoutProjection.win / runouts.length;
+      projected.tie += runoutProjection.tie / runouts.length;
+      projected.lose += runoutProjection.lose / runouts.length;
+      projected.equity += runoutProjection.equity / runouts.length;
     }
     if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
       onProgress?.((runoutIndex + 1) / runouts.length * (willEnumerateTwoOpponents ? .25 : 1));
@@ -250,7 +273,7 @@ export async function enumerateExact(
   }
   return {
     ...base,
-    multiwayUnavailable: `${opponents + 1} 人桌需要穷举 ${compactDealCount(dealCount)} 个无放回牌局，当前设备不适合一次完成；已停止使用会产生系统偏差的独立事件公式。`,
+    table: { ...projected, method: "conditional_power" },
     opponents,
     method: "exact",
   };

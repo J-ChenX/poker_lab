@@ -12,6 +12,7 @@ test("counts legal two-opponent deals without replacement", () => {
 test("enumerates an exact three-player river result", async () => {
   const result = await enumerateExact(["As", "Kh"], ["10s", "9s", "8s", "6h", "6d"], 2);
   assert.equal(result.method, "exact_multiway");
+  assert.equal(result.table?.method, "exact");
   assert.equal(result.table?.samples, 446_985);
   assert.equal(result.table?.winHands, 52_527);
   assert.equal(result.table?.tieHands, 2_736);
@@ -19,9 +20,9 @@ test("enumerates an exact three-player river result", async () => {
   assert.ok(Math.abs((result.table!.win + result.table!.tie + result.table!.lose) - 100) < 1e-9);
 });
 
-test("does not substitute the old independence projection for KK five-handed", () => {
+test("returns the requested deterministic multiplayer approximation for KK five-handed", () => {
   const result = preflopResult(["Ks", "Kh"], 4);
-  assert.equal(result.table, undefined);
-  assert.match(result.multiwayUnavailable ?? "", /已移除.*独立/);
+  assert.equal(result.table?.method, "preflop_power");
+  assert.ok(Math.abs(result.table!.win - 45.477414160591366) < 1e-10);
   assert.equal(result.win, 82.12);
 });
