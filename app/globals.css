@@ -117,6 +117,9 @@ h1 em { color:var(--green); font-family:Georgia,serif; font-weight:400; }
 .table-projection.approximation>div strong { color:#f1c96a; }
 .table-projection.approximation>span { display:block; margin-top:7px; color:#a79e8b; font-size:8px; line-height:1.65; }
 .hope-card { margin-top:18px; padding:16px; border:1px solid #466152; background:linear-gradient(145deg,#142119,#101713); }
+.board-hope-section { margin:-55px 5vw 85px; padding:26px; color:white; }
+.board-hope-section .hope-head h3 { font-size:32px; }
+.board-hope-section .hope-next>div { grid-template-columns:repeat(6,1fr); }
 .hope-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
 .hope-head p,.hope-note { margin:0; color:#8d9891; font-size:8px; line-height:1.6; }
 .hope-head h3 { margin:4px 0 0; color:var(--lime); font:400 24px Georgia,"Microsoft YaHei",serif; }
@@ -149,6 +152,8 @@ h1 em { color:var(--green); font-family:Georgia,serif; font-weight:400; }
 .preflop-note p { margin:0; color:#838c86; font-size:8px; line-height:1.6; }
 @media(max-width:760px){.funding-panel{grid-template-columns:1fr 1fr}.odds-preview{grid-column:1/-1}.funding-head{grid-column:1/-1}}
 @media(max-width:520px){.funding-panel{padding:0 23px 25px}.funding-head>span{display:none}.decision-metrics{grid-template-columns:1fr 1fr 1fr}}
+@media(max-width:760px){.board-hope-section{margin:-55px 20px 70px;padding:22px}.board-hope-section .hope-next>div{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:520px){.board-hope-section{margin-left:12px;margin-right:12px}.hope-metrics{grid-template-columns:1fr}.hope-metrics>div{border-right:0;border-bottom:1px solid #303c35}.hope-metrics>div:last-child{border-bottom:0}}
 .catalogue-section { grid-template-columns:.62fr 1.38fr; align-items:start; }
 .category-catalogue { padding:18px 0 18px 36px; }
 .catalogue-row { display:grid; grid-template-columns:126px 1fr; gap:18px; min-height:74px; padding:12px 0; border-bottom:1px solid var(--line); }
