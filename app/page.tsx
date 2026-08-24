@@ -99,11 +99,6 @@ export default function Home() {
         <div className="top-actions"><div className="tagline"><span className="live-dot" />本地正向枚举 · 无随机采样</div><button className="icon-button" type="button" onClick={reset} title="重新开始" aria-label="重新开始">↻</button></div>
       </header>
 
-      <section className="hero">
-        <div><p className="eyebrow">EXACT HOLD&apos;EM CALCULATOR</p><h1>每一种可能，<br /><em>全部算进去。</em></h1></div>
-        <p className="hero-copy">单挑逐手牌精确比较；翻牌前按169类起手牌读取经过独立验证的多人校准曲线。翻牌后精确计算一至三名对手的无放回匹配矩，用三阶相关性补偿更多玩家，而不是直接取幂。</p>
-      </section>
-
       <section className="workspace" id="calculator">
         <div className="input-area">
           <div className="card-panel hole-panel">
@@ -155,11 +150,6 @@ export default function Home() {
       </section>
 
       {result?.hope && <section className="hope-card board-hope-section"><div className="hope-head"><div><p>剩余希望</p><h3>{result.hope.competitive.toFixed(1)}% <span>胜算过半牌面</span></h3></div><span>当前：{result.hope.currentHand === "一对" ? "对子" : result.hope.currentHand}</span></div><div className="hope-metrics"><div><span>成牌提升率</span><strong>{result.hope.improve.toFixed(1)}%</strong></div><div><span>提升后平均权益</span><strong>{result.hope.improvedEquity.toFixed(1)}%</strong></div><div><span>未提升平均权益</span><strong>{result.hope.blankEquity.toFixed(1)}%</strong></div></div><div className="hope-next"><span>最有利的下一张牌</span><div>{result.hope.nextCards.map(({ card, equity }) => { const parts = cardParts(card); return <div className={parts.code === "h" || parts.code === "d" ? "red" : ""} key={card}><b>{parts.rank}{parts.symbol}</b><small>{equity.toFixed(1)}% 权益</small></div>; })}</div></div><p className="hope-note">“成牌提升”只表示最终牌型变大，公共牌变化也会计入，并不等于获胜；真正的希望以胜算过半牌面为准，每个牌面均按当前 {result.opponents + 1} 人桌重新比较。</p></section>}
-
-      <section className="method-section">
-        <div><p className="eyebrow">HOW IT WORKS</p><h2>不是模拟，<br />是穷尽所有可能。</h2></div>
-        <div className="method-copy"><p>翻牌后，对每一种最终公共牌建立可赢底牌图：牌是顶点、两张底牌是边。边数、互斥边对和互斥三边分别给出一至三名对手的无放回匹配矩；更多对手由三阶对数相关模型补偿。翻牌前三人至九人使用169类校准曲线直接查询。</p><p className="fine-print">页面运行时不做随机抽样。离线蒙特卡洛仅用于拟合翻牌前校准曲线和独立盲测；翻牌后三人桌为完整无放回精确值，更多人数显示相关性补偿值。决策建议使用当前多人权益，加注建议仍不包含对手范围与弃牌率。</p></div>
-      </section>
 
       {pickerMode && <div className="picker-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerMode(null); }}>
         <section className="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
