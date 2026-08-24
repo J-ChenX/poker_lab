@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { boardCategoryCatalogue, cardParts, enumerateExact, HAND_NAMES, RANKS, SUITS, type ExactResult } from "./poker";
+import { boardCategoryCatalogue, cardParts, enumerateExact, evaluate, HAND_NAMES, RANKS, SUITS, type ExactResult, type Score } from "./poker";
 import { preflopResult } from "./preflop";
 
 type PickerMode = "hole" | "board" | null;
@@ -18,6 +18,21 @@ function PlayingCard({ card, onClick, compact = false, label, disabled = false }
 function Ring({ primary, secondary, players }: { primary: number; secondary?: number; players: number }) {
   const safe = Math.max(0, Math.min(100, primary));
   return <div className={`equity-ring ${secondary !== undefined ? "multi" : ""}`} aria-label={`${players}人胜率 ${safe.toFixed(1)}%`} style={{ background: `conic-gradient(var(--lime) ${safe * 3.6}deg, #34413b 0deg)` }}><div className="ring-center"><span className="ring-label">{secondary !== undefined ? `${players}人胜率` : "单人胜率"}</span><div className="ring-primary"><strong>{safe.toFixed(1)}</strong><b>%</b></div>{secondary !== undefined && <div className="ring-secondary"><span>单人胜率</span><strong>{secondary.toFixed(1)}%</strong></div>}</div></div>;
+}
+
+const scoreRank = (value: number) => RANKS[value - 2] ?? String(value);
+
+function madeHandLabel(score: Score, cards: string[]) {
+  if (score[0] === 1) return `对${scoreRank(score[1])}`;
+  if (score[0] === 2) return `对${scoreRank(score[1])} + 对${scoreRank(score[2])}`;
+  if (score[0] === 3) return `${scoreRank(score[1])}三条`;
+  if (score[0] === 4) return `${scoreRank(score[1])}高顺子`;
+  const flushSuit = SUITS.find((suit) => cards.filter((card) => card.endsWith(suit.code)).length >= 5);
+  if (score[0] === 5) return flushSuit ? `${flushSuit.symbol} ${flushSuit.name}同花` : "同花";
+  if (score[0] === 6) return `${scoreRank(score[1])}满${scoreRank(score[2])}`;
+  if (score[0] === 7) return `${scoreRank(score[1])}四条`;
+  if (score[0] === 8) return `${flushSuit?.symbol ?? ""}${scoreRank(score[1])}高同花顺`;
+  return HAND_NAMES[score[0]];
 }
 
 export default function Home() {
@@ -39,6 +54,14 @@ export default function Home() {
     () => boardCategoryCatalogue(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
     [board, hole],
   );
+  const madeHand = useMemo(() => {
+    const selectedHole = hole.filter(Boolean) as string[];
+    const selectedBoard = board.filter(Boolean) as string[];
+    if (selectedHole.length !== 2 || selectedBoard.length < 3) return null;
+    const cards = [...selectedHole, ...selectedBoard];
+    const score = evaluate(cards);
+    return score[0] >= 1 ? { category: score[0], label: madeHandLabel(score, cards) } : null;
+  }, [board, hole]);
 
   const openPicker = (mode: Exclude<PickerMode, null>) => {
     if (running) return;
@@ -101,7 +124,7 @@ export default function Home() {
 
       <section className="workspace" id="calculator">
         <div className="input-area">
-          <div className="card-panel hole-panel">
+          <div className={`card-panel hole-panel ${madeHand ? "made-hand" : ""}`}>
             <div className="section-head"><div><span className="step">01</span><h2>你的底牌</h2></div><button className="text-action" type="button" onClick={() => openPicker("hole")}>批量选择</button></div>
             <div className="cards-row">{hole.map((card, index) => <PlayingCard key={index} card={card} disabled={running} label={`底牌 ${index + 1}`} onClick={() => openPicker("hole")} />)}</div>
           </div>
@@ -142,7 +165,7 @@ export default function Home() {
 
       <section className="leaders-section catalogue-section">
         <div className="leaders-intro"><p className="eyebrow">BOARD CATALOGUE</p><h2>当前公共牌的<br />完整牌型目录</h2><p>固定按同花顺、四条、葫芦、同花、顺子、三条、两对、对子排列；每一类显示实际所需底牌并由大到小排序。</p></div>
-        {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.map((section, index) => <article className={`catalogue-row ${section.variants.length ? "" : "empty"}`} key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{section.variants.length ? `${section.variants.length} 种牌力` : "当前无此牌型"}</small></div><div className="variant-list">{section.variants.length ? section.variants.map((variant) => <div className={`variant-chip ${variant.suitCode === "h" || variant.suitCode === "d" ? "red" : ""}`} key={variant.key}><strong>{variant.label}</strong><span>{variant.comboCount} 组底牌</span></div>) : <span className="unavailable">—</span>}</div></article>)}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
+        {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.map((section, index) => { const isMyHand = madeHand?.category === section.category; return <article className={`catalogue-row ${section.variants.length || isMyHand ? "" : "empty"}`} key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{isMyHand ? "我的牌已成型" : section.variants.length ? `${section.variants.length} 种牌力` : "当前无此牌型"}</small></div><div className="variant-list">{isMyHand && <div className="variant-chip hero-made-chip"><strong>我的牌</strong><span>{madeHand.label}</span></div>}{section.variants.map((variant) => <div className={`variant-chip ${variant.suitCode === "h" || variant.suitCode === "d" ? "red" : ""}`} key={variant.key}><strong>{variant.label}</strong><span>{variant.comboCount} 组底牌</span></div>)}{!section.variants.length && !isMyHand && <span className="unavailable">—</span>}</div></article>; })}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 
       {result?.hope && <section className="hope-card board-hope-section"><div className="hope-head"><div><p>剩余希望</p><h3>{result.hope.competitive.toFixed(1)}% <span>胜算过半牌面</span></h3></div><span>当前：{result.hope.currentHand === "一对" ? "对子" : result.hope.currentHand}</span></div><div className="hope-metrics"><div><span>成牌提升率</span><strong>{result.hope.improve.toFixed(1)}%</strong></div><div><span>提升后平均权益</span><strong>{result.hope.improvedEquity.toFixed(1)}%</strong></div><div><span>未提升平均权益</span><strong>{result.hope.blankEquity.toFixed(1)}%</strong></div></div><div className="hope-next"><span>最有利的下一张牌</span><div>{result.hope.nextCards.map(({ card, equity }) => { const parts = cardParts(card); return <div className={parts.code === "h" || parts.code === "d" ? "red" : ""} key={card}><b>{parts.rank}{parts.symbol}</b><small>{equity.toFixed(1)}% 权益</small></div>; })}</div></div><p className="hope-note">“成牌提升”只表示最终牌型变大，公共牌变化也会计入，并不等于获胜；真正的希望以胜算过半牌面为准，每个牌面均按当前 {result.opponents + 1} 人桌重新比较。</p></section>}
