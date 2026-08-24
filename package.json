@@ -12,6 +12,7 @@
     "test": "npm run build && node --test tests/rendered-html.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:poker": "tsx --test tests/poker-exact.test.ts",
+    "generate:preflop-calibration": "tsx scripts/generate-preflop-calibration.ts",
     "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts",
     "db:generate": "drizzle-kit generate"
   },

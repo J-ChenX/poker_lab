@@ -22,7 +22,7 @@ export type ExactResult = {
     tie: number;
     lose: number;
     equity: number;
-    method: "exact" | "conditional_power" | "preflop_power";
+    method: "exact" | "third_order_compensation" | "preflop_compensation";
     samples?: number;
     winHands?: number;
     tieHands?: number;
@@ -110,8 +110,6 @@ function combinations(cards: string[], size: number) {
   return result;
 }
 
-const MULTIWAY_EXACT_LIMIT = 25_000_000n;
-
 function chooseBigInt(total: number, size: number) {
   if (size < 0 || size > total) return 0n;
   const selected = Math.min(size, total - size);
@@ -136,73 +134,58 @@ export function exactMultiwayDealCount(boardLength: number, opponents: number) {
   return chooseBigInt(cardsBeforeRunout, missingBoard) * matchingCount(45, opponents);
 }
 
-type ClassifiedHand = { first: number; second: number; outcome: -1 | 0 | 1 };
+const chooseTwo = (value: number) => value * (value - 1) / 2;
+const chooseThree = (value: number) => value * (value - 1) * (value - 2) / 6;
 
-export function independentOpponentApproximation(winPercent: number, tiePercent: number, opponents: number) {
-  const winOne = winPercent / 100;
-  const tieOne = tiePercent / 100;
-  const unbeatenOne = winOne + tieOne;
-  const win = winOne ** opponents;
-  const unbeaten = unbeatenOne ** opponents;
-  let equity = 0;
-  let combinations = 1;
-  for (let ties = 0; ties <= opponents; ties++) {
-    if (ties > 0) combinations = combinations * (opponents - ties + 1) / ties;
-    equity += combinations * tieOne ** ties * winOne ** (opponents - ties) / (ties + 1);
-  }
-  return { win: win * 100, tie: (unbeaten - win) * 100, lose: (1 - unbeaten) * 100, equity: equity * 100 };
+function twoEdgeMatchings(edges: number, degrees: number[]) {
+  return chooseTwo(edges) - degrees.reduce((sum, degree) => sum + chooseTwo(degree), 0);
 }
 
-async function enumerateTwoOpponents(
-  hero: string[],
-  board: string[],
-  available: string[],
-  runouts: string[][],
-  onProgress?: (progress: number) => void,
-) {
-  let wins = 0;
-  let ties = 0;
-  let losses = 0;
-  let equity = 0;
-
-  for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
-    const runout = runouts[runoutIndex];
-    const blocked = new Set(runout);
-    const opponentDeck = available.filter((card) => !blocked.has(card));
-    const finalBoard = [...board, ...runout];
-    const heroScore = evaluate([...hero, ...finalBoard]);
-    const hands: ClassifiedHand[] = [];
-    for (let first = 0; first < opponentDeck.length - 1; first++) {
-      for (let second = first + 1; second < opponentDeck.length; second++) {
-        const comparison = compareScores(heroScore, evaluate([opponentDeck[first], opponentDeck[second], ...finalBoard]));
-        hands.push({ first, second, outcome: comparison > 0 ? 1 : comparison < 0 ? -1 : 0 });
-      }
+function threeEdgeMatchings(edges: Array<readonly [number, number]>, degrees: number[], adjacency: Uint8Array) {
+  const edgeCount = edges.length;
+  if (edgeCount < 3) return 0;
+  const cardCount = degrees.length;
+  const adjacentPairs = degrees.reduce((sum, degree) => sum + chooseTwo(degree), 0);
+  const stars = degrees.reduce((sum, degree) => sum + chooseThree(degree), 0);
+  let linkedWedges = 0;
+  let triangles = 0;
+  for (const [first, second] of edges) {
+    linkedWedges += (degrees[first] - 1) * (degrees[second] - 1);
+    for (let third = second + 1; third < cardCount; third++) {
+      if (adjacency[first * cardCount + third] && adjacency[second * cardCount + third]) triangles++;
     }
-    for (let firstHand = 0; firstHand < hands.length - 1; firstHand++) {
-      const first = hands[firstHand];
-      for (let secondHand = firstHand + 1; secondHand < hands.length; secondHand++) {
-        const second = hands[secondHand];
-        if (first.first === second.first || first.first === second.second || first.second === second.first || first.second === second.second) continue;
-        if (first.outcome < 0 || second.outcome < 0) losses++;
-        else if (first.outcome === 0 || second.outcome === 0) {
-          ties++;
-          equity += 1 / (1 + Number(first.outcome === 0) + Number(second.outcome === 0));
-        } else {
-          wins++;
-          equity++;
-        }
-      }
-    }
-    onProgress?.(.25 + .75 * (runoutIndex + 1) / runouts.length);
-    await new Promise<void>((resolve) => setTimeout(resolve, 0));
   }
+  return chooseThree(edgeCount) - adjacentPairs * (edgeCount - 2) + 2 * stars + linkedWedges - triangles;
+}
 
-  const samples = wins + ties + losses;
-  const percent = (value: number) => value / samples * 100;
-  return {
-    win: percent(wins), tie: percent(ties), lose: percent(losses), equity: percent(equity),
-    samples, winHands: wins, tieHands: ties, loseHands: losses, method: "exact" as const,
-  };
+function extrapolateThirdOrder(one: number, two: number, three: number, opponents: number) {
+  if (opponents === 1) return one;
+  if (opponents === 2) return two;
+  if (opponents === 3) return three;
+  if (one <= 0 || two <= 0 || three <= 0) return 0;
+  if (one >= 1) return 1;
+  const pairInteraction = Math.log(Math.max(two / (one * one), 1e-12));
+  const tripleInteraction = Math.log(Math.max(three / (one ** 3 * Math.exp(3 * pairInteraction)), 1e-12));
+  const projected = Math.exp(
+    opponents * Math.log(one)
+    + chooseTwo(opponents) * pairInteraction
+    + chooseThree(opponents) * tripleInteraction,
+  );
+  return Math.max(0, Math.min(one, projected));
+}
+
+function averageTieShare(winOne: number, tieOne: number, opponents: number) {
+  const unbeaten = winOne + tieOne;
+  if (tieOne <= 0 || unbeaten <= 0) return .5;
+  const tieChance = tieOne / unbeaten;
+  const noTie = (1 - tieChance) ** opponents;
+  let share = 0;
+  let combinations = 1;
+  for (let ties = 1; ties <= opponents; ties++) {
+    combinations = combinations * (opponents - ties + 1) / ties;
+    share += combinations * tieChance ** ties * (1 - tieChance) ** (opponents - ties) / (ties + 1);
+  }
+  return noTie < 1 ? share / (1 - noTie) : .5;
 }
 
 export async function enumerateExact(
@@ -216,11 +199,10 @@ export async function enumerateExact(
   const available = DECK.filter((card) => !used.has(card));
   const missing = 5 - board.length;
   const runouts = combinations(available, missing);
-  const dealCount = exactMultiwayDealCount(board.length, opponents);
-  const willEnumerateTwoOpponents = opponents === 2 && dealCount <= MULTIWAY_EXACT_LIMIT;
   const outcomes = [0, 0, 0];
   const categories = Array(9).fill(0) as number[];
   const projected = { win: 0, tie: 0, lose: 0, equity: 0 };
+  const exactTwo = { wins: 0, ties: 0, losses: 0, equity: 0, samples: 0 };
   let equity = 0;
 
   for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
@@ -230,30 +212,79 @@ export async function enumerateExact(
     const finalBoard = [...board, ...runout];
     const heroScore = evaluate([...hero, ...finalBoard]);
     const runoutOutcomes = [0, 0, 0];
+    const degrees = {
+      win: Array(opponentDeck.length).fill(0) as number[],
+      tie: Array(opponentDeck.length).fill(0) as number[],
+      unbeaten: Array(opponentDeck.length).fill(0) as number[],
+    };
+    const edges = {
+      win: [] as Array<readonly [number, number]>,
+      unbeaten: [] as Array<readonly [number, number]>,
+    };
+    const adjacency = {
+      win: new Uint8Array(opponentDeck.length * opponentDeck.length),
+      unbeaten: new Uint8Array(opponentDeck.length * opponentDeck.length),
+    };
+    const addEdge = (kind: "win" | "unbeaten", first: number, second: number) => {
+      edges[kind].push([first, second]);
+      adjacency[kind][first * opponentDeck.length + second] = 1;
+      adjacency[kind][second * opponentDeck.length + first] = 1;
+    };
     for (let first = 0; first < opponentDeck.length - 1; first++) {
       for (let second = first + 1; second < opponentDeck.length; second++) {
         const opponentScore = evaluate([opponentDeck[first], opponentDeck[second], ...finalBoard]);
         const comparison = compareScores(heroScore, opponentScore);
         categories[heroScore[0]]++;
-        if (comparison > 0) { outcomes[0]++; runoutOutcomes[0]++; equity += 1; }
-        else if (comparison === 0) { outcomes[1]++; runoutOutcomes[1]++; equity += .5; }
+        if (comparison > 0) {
+          outcomes[0]++; runoutOutcomes[0]++; equity += 1;
+          degrees.win[first]++; degrees.win[second]++;
+          degrees.unbeaten[first]++; degrees.unbeaten[second]++;
+          addEdge("win", first, second);
+          addEdge("unbeaten", first, second);
+        }
+        else if (comparison === 0) {
+          outcomes[1]++; runoutOutcomes[1]++; equity += .5;
+          degrees.tie[first]++; degrees.tie[second]++;
+          degrees.unbeaten[first]++; degrees.unbeaten[second]++;
+          addEdge("unbeaten", first, second);
+        }
         else { outcomes[2]++; runoutOutcomes[2]++; }
       }
     }
     if (opponents > 1) {
       const runoutHands = runoutOutcomes[0] + runoutOutcomes[1] + runoutOutcomes[2];
-      const runoutProjection = independentOpponentApproximation(
-        runoutOutcomes[0] / runoutHands * 100,
-        runoutOutcomes[1] / runoutHands * 100,
-        opponents,
-      );
-      projected.win += runoutProjection.win / runouts.length;
-      projected.tie += runoutProjection.tie / runouts.length;
-      projected.lose += runoutProjection.lose / runouts.length;
-      projected.equity += runoutProjection.equity / runouts.length;
+      const totalTwo = Number(matchingCount(opponentDeck.length, 2));
+      const winTwo = twoEdgeMatchings(runoutOutcomes[0], degrees.win);
+      const tieTwo = twoEdgeMatchings(runoutOutcomes[1], degrees.tie);
+      const unbeatenEdges = runoutOutcomes[0] + runoutOutcomes[1];
+      const unbeatenTwo = twoEdgeMatchings(unbeatenEdges, degrees.unbeaten);
+      const tiedTwo = unbeatenTwo - winTwo;
+      const oneTieTwo = tiedTwo - tieTwo;
+      const equityTwo = winTwo + oneTieTwo / 2 + tieTwo / 3;
+      exactTwo.wins += winTwo;
+      exactTwo.ties += tiedTwo;
+      exactTwo.losses += totalTwo - unbeatenTwo;
+      exactTwo.equity += equityTwo;
+      exactTwo.samples += totalTwo;
+
+      if (opponents > 2) {
+        const totalThree = Number(matchingCount(opponentDeck.length, 3));
+        const winThree = threeEdgeMatchings(edges.win, degrees.win, adjacency.win);
+        const unbeatenThree = threeEdgeMatchings(edges.unbeaten, degrees.unbeaten, adjacency.unbeaten);
+        const winOne = runoutOutcomes[0] / runoutHands;
+        const tieOne = runoutOutcomes[1] / runoutHands;
+        const unbeatenOne = winOne + tieOne;
+        const winAll = extrapolateThirdOrder(winOne, winTwo / totalTwo, winThree / totalThree, opponents);
+        const unbeatenAll = Math.max(winAll, extrapolateThirdOrder(unbeatenOne, unbeatenTwo / totalTwo, unbeatenThree / totalThree, opponents));
+        const tieAll = Math.max(0, unbeatenAll - winAll);
+        projected.win += winAll * 100 / runouts.length;
+        projected.tie += tieAll * 100 / runouts.length;
+        projected.lose += (1 - unbeatenAll) * 100 / runouts.length;
+        projected.equity += (winAll + tieAll * averageTieShare(winOne, tieOne, opponents)) * 100 / runouts.length;
+      }
     }
     if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
-      onProgress?.((runoutIndex + 1) / runouts.length * (willEnumerateTwoOpponents ? .25 : 1));
+      onProgress?.((runoutIndex + 1) / runouts.length);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
   }
@@ -267,13 +298,17 @@ export async function enumerateExact(
     categories: categories.map(percent), bestHand: HAND_NAMES[topCategory],
   };
   if (opponents === 1) return { ...base, opponents, method: "exact" };
-  if (willEnumerateTwoOpponents) {
-    const table = await enumerateTwoOpponents(hero, board, available, runouts, onProgress);
+  if (opponents === 2) {
+    const tablePercent = (value: number) => value / exactTwo.samples * 100;
+    const table = {
+      win: tablePercent(exactTwo.wins), tie: tablePercent(exactTwo.ties), lose: tablePercent(exactTwo.losses), equity: tablePercent(exactTwo.equity),
+      samples: exactTwo.samples, winHands: exactTwo.wins, tieHands: exactTwo.ties, loseHands: exactTwo.losses, method: "exact" as const,
+    };
     return { ...base, table, opponents, method: "exact_multiway" };
   }
   return {
     ...base,
-    table: { ...projected, method: "conditional_power" },
+    table: { ...projected, method: "third_order_compensation" },
     opponents,
     method: "exact",
   };

@@ -101,7 +101,7 @@ export default function Home() {
 
       <section className="hero">
         <div><p className="eyebrow">EXACT HOLD&apos;EM CALCULATOR</p><h1>每一种可能，<br /><em>全部算进去。</em></h1></div>
-        <p className="hero-copy">单个随机对手逐手牌精确比较；多人桌始终给出确定性概率。可穷举时使用无放回精确值，其余状态按每一种公共牌分别计算单挑概率的多人次方后再汇总。</p>
+        <p className="hero-copy">单挑逐手牌精确比较；翻牌前按169类起手牌读取经过独立验证的多人校准曲线。翻牌后精确计算一至三名对手的无放回匹配矩，用三阶相关性补偿更多玩家，而不是直接取幂。</p>
       </section>
 
       <section className="workspace" id="calculator">
@@ -118,7 +118,7 @@ export default function Home() {
           </div>
 
           <div className="settings-panel exact-settings">
-            <div className="setting exact-note"><div><span className="step">03</span><div><h3>确定性计算</h3><p>逐手牌比较 · 可行状态无放回穷举</p></div></div><span className="verified-mark">✓ 无随机数</span></div>
+            <div className="setting exact-note"><div><span className="step">03</span><div><h3>相关性补偿</h3><p>无放回组合 · 多人校准曲线</p></div></div><span className="verified-mark">✓ 页面无抽样</span></div>
             <div className="setting exact-note"><div><span className="step">04</span><div><h3>总玩家人数</h3><p>包含你自己 · 支持 2–9 人</p></div></div><label className="player-input"><span>人数</span><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 2); setResult(null); }} /></label></div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
             {!ready && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
@@ -142,7 +142,7 @@ export default function Home() {
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
             {result.table && result.table.method === "exact" && <div className="table-projection exact"><div><span>{result.opponents + 1} 人桌无放回精确胜率</span><strong>{result.table.win.toFixed(2)}%</strong></div><p>{result.table.samples!.toLocaleString()} 个合法牌局全部完成 · 平 {result.table.tie.toFixed(2)}% · 败 {result.table.lose.toFixed(2)}% · 权益 {result.table.equity.toFixed(2)}%</p></div>}
-            {result.table && result.table.method !== "exact" && <div className="table-projection approximation"><div><span>{result.opponents + 1} 人桌确定性近似胜率</span><strong>{result.table.win.toFixed(2)}%</strong></div><p>平 {result.table.tie.toFixed(2)}% · 败 {result.table.lose.toFixed(2)}% · 权益 {result.table.equity.toFixed(2)}%</p><span>{result.table.method === "preflop_power" ? `翻牌前采用：单挑概率 ^ ${result.opponents}` : `翻牌后采用：逐个公共牌局面的单挑概率 ^ ${result.opponents}，再按全部公共牌汇总`}</span></div>}
+            {result.table && result.table.method !== "exact" && <div className="table-projection approximation"><div><span>{result.opponents + 1} 人桌相关性补偿胜率</span><strong>{result.table.win.toFixed(2)}%</strong></div><p>平 {result.table.tie.toFixed(2)}% · 败 {result.table.lose.toFixed(2)}% · 权益 {result.table.equity.toFixed(2)}%</p><span>{result.table.method === "preflop_compensation" ? "翻牌前：169类起手牌 × 当前人数校准曲线" : "翻牌后：逐牌面的一、二、三手无放回匹配矩"}</span></div>}
             {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
             {result.categories.some((value) => value > 0) ? <div className="distribution"><div className="distribution-head"><h3>最终牌型分布</h3><span>最常见：{result.bestHand}</span></div>{HAND_NAMES.map((name, index) => result.categories[index] > .004 && <div className="hand-row" key={name}><span>{name}</span><div><i style={{ width: `${Math.max(result.categories[index], .8)}%` }} /></div><strong>{result.categories[index].toFixed(1)}%</strong></div>)}</div> : <div className="preflop-note"><span>{result.bestHand}</span><p>翻牌前结果来自 169 类起手牌穷举表；发出翻牌后可查看最终牌型分布。</p></div>}
           </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EXACT MODE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "点击开始后，将完整遍历所有剩余牌局，不做随机抽样。" : "只选择两张底牌即可计算；公共牌仍支持一次多选、再次点击取消。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
@@ -156,7 +156,7 @@ export default function Home() {
 
       <section className="method-section">
         <div><p className="eyebrow">HOW IT WORKS</p><h2>不是模拟，<br />是穷尽所有可能。</h2></div>
-        <div className="method-copy"><p>翻牌前以单挑胜、平概率的多人次方近似；翻牌后先对每一种最终公共牌计算单挑胜、平、败，再分别取多人次方并按全部公共牌汇总。这样保留了所有玩家共享同一牌面的影响，比直接对总体单挑胜率取幂更接近真实多人牌局。</p><p className="fine-print">三人桌转牌、河牌仍显示真正的无放回精确值。其他人数显示“确定性近似”，因为对手底牌之间并非完全独立；蒙特卡洛只用于后台检查误差，不参与页面计算。决策建议会使用当前显示的多人权益，加注建议仍不包含对手范围与弃牌率。</p></div>
+        <div className="method-copy"><p>翻牌后，对每一种最终公共牌建立可赢底牌图：牌是顶点、两张底牌是边。边数、互斥边对和互斥三边分别给出一至三名对手的无放回匹配矩；更多对手由三阶对数相关模型补偿。翻牌前三人至九人使用169类校准曲线直接查询。</p><p className="fine-print">页面运行时不做随机抽样。离线蒙特卡洛仅用于拟合翻牌前校准曲线和独立盲测；翻牌后三人桌为完整无放回精确值，更多人数显示相关性补偿值。决策建议使用当前多人权益，加注建议仍不包含对手范围与弃牌率。</p></div>
       </section>
 
       {pickerMode && <div className="picker-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerMode(null); }}>
