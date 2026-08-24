@@ -15,9 +15,10 @@ function PlayingCard({ card, onClick, label, disabled = false }: { card: string 
   );
 }
 
-function Ring({ primary, secondary, players }: { primary: number; secondary?: number; players: number }) {
+function Ring({ primary, players }: { primary: number; players: number }) {
   const safe = Math.max(0, Math.min(100, primary));
-  return <div className={`equity-ring ${secondary !== undefined ? "multi" : ""}`} aria-label={`${players}人胜率 ${safe.toFixed(1)}%`} style={{ background: `conic-gradient(var(--lime) ${safe * 3.6}deg, #34413b 0deg)` }}><div className="ring-center"><span className="ring-label">{secondary !== undefined ? `${players}人胜率` : "单人胜率"}</span><div className="ring-primary"><strong>{safe.toFixed(1)}</strong><b>%</b></div>{secondary !== undefined && <div className="ring-secondary"><span>单人胜率</span><strong>{secondary.toFixed(1)}%</strong></div>}</div></div>;
+  const physical = 100 / players;
+  return <div className="equity-ring multi" aria-label={`${players}人胜率 ${safe.toFixed(1)}%，物理胜率 ${physical.toFixed(1)}%`} style={{ background: `conic-gradient(var(--lime) ${safe * 3.6}deg, #34413b 0deg)` }}><div className="ring-center"><span className="ring-label">{players}人胜率</span><div className="ring-primary"><strong>{safe.toFixed(1)}</strong><b>%</b></div><div className="ring-secondary"><span>物理胜率 · 100% ÷ {players}</span><strong>{physical.toFixed(1)}%</strong></div></div></div>;
 }
 
 const scoreRank = (value: number) => RANKS[value - 2] ?? String(value);
@@ -159,8 +160,9 @@ export default function Home() {
         <aside className={`result-panel ${result ? "has-result" : ""}`} aria-live="polite">
           {result ? <>
             <div className="result-top"><p className="eyebrow">HAND-BY-HAND COMPARISON</p></div>
-            <Ring primary={result.table?.win ?? result.win} secondary={result.table ? result.win : undefined} players={result.opponents + 1} />
+            <Ring primary={result.table?.win ?? result.win} players={result.opponents + 1} />
             <div className="outcome-list">
+              <div><span><i className="dot win" />单人胜率</span><strong>{result.win.toFixed(2)}%</strong>{result.winHands !== undefined && <small>{result.winHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot tie" />完全相同 · 平</span><strong>{result.tie.toFixed(2)}%</strong>{result.tieHands !== undefined && <small>{result.tieHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
