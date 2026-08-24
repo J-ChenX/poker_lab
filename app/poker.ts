@@ -22,7 +22,7 @@ export type ExactResult = {
     tie: number;
     lose: number;
     equity: number;
-    method: "exact" | "monte_carlo" | "preflop_monte_carlo";
+    method: "exact" | "model_estimate" | "monte_carlo" | "preflop_monte_carlo";
     samples?: number;
     margin95?: number;
     seed?: number;
@@ -34,7 +34,7 @@ export type ExactResult = {
   categories: number[];
   bestHand: string;
   opponents: number;
-  method: "exact" | "exact_multiway" | "preflop";
+  method: "exact" | "exact_multiway" | "model_estimate" | "preflop";
   hope?: {
     currentHand: string;
     improve: number;
@@ -178,6 +178,7 @@ function twoEdgeMatchings(edges: number, degrees: number[]) {
 }
 
 export const MULTIWAY_MONTE_CARLO_SAMPLES = 500_000;
+export const QUICK_ESTIMATE_SAMPLES = 4_096;
 
 function scenarioSeed(hero: string[], board: string[], opponents: number) {
   let hash = 0x811c9dc5;
@@ -198,6 +199,94 @@ function seededRandom(seed: number) {
   };
 }
 
+function averageTieShare(winOne: number, tieOne: number, opponents: number) {
+  const unbeaten = winOne + tieOne;
+  if (tieOne <= 0 || unbeaten <= 0) return .5;
+  const tieChance = tieOne / unbeaten;
+  const noTie = (1 - tieChance) ** opponents;
+  let share = 0;
+  let combinations = 1;
+  for (let ties = 1; ties <= opponents; ties++) {
+    combinations = combinations * (opponents - ties + 1) / ties;
+    share += combinations * tieChance ** ties * (1 - tieChance) ** (opponents - ties) / (ties + 1);
+  }
+  return noTie < 1 ? share / (1 - noTie) : .5;
+}
+
+/**
+ * Fast first-pass model: probe a small deterministic set of legal heads-up
+ * deals, then project its win/tie rates to N opponents with an independence
+ * model. It is deliberately replaced by the shared-deck simulation below.
+ */
+export function estimateMultiway(
+  hero: string[],
+  board: string[],
+  opponents: number,
+  samples = QUICK_ESTIMATE_SAMPLES,
+): ExactResult {
+  if (hero.length !== 2 || (board.length !== 0 && (board.length < 3 || board.length > 5))) throw new Error("快速估算需要两张底牌以及 0、3、4 或 5 张公共牌");
+  if (opponents < 1 || opponents > 8) throw new Error("对手人数需要在 1 到 8 之间");
+  const used = new Set([...hero, ...board]);
+  const deck = DECK.filter((card) => !used.has(card));
+  const missingBoard = 5 - board.length;
+  const drawCount = missingBoard + 2;
+  const totalSamples = Math.max(256, Math.floor(samples));
+  const random = seededRandom(scenarioSeed(hero, board, opponents) ^ 0xa511e9b3);
+  const outcomes = { win: 0, tie: 0, lose: 0, equity: 0 };
+  const categories = Array(9).fill(0) as number[];
+
+  for (let sample = 0; sample < totalSamples; sample++) {
+    const swaps: number[] = [];
+    for (let index = 0; index < drawCount; index++) {
+      const target = index + Math.floor(random() * (deck.length - index));
+      swaps.push(target);
+      [deck[index], deck[target]] = [deck[target], deck[index]];
+    }
+    const finalBoard = [...board, ...deck.slice(0, missingBoard)];
+    const heroScore = evaluate([...hero, ...finalBoard]);
+    const opponentScore = evaluate([deck[missingBoard], deck[missingBoard + 1], ...finalBoard]);
+    const comparison = compareScores(heroScore, opponentScore);
+    categories[heroScore[0]]++;
+    if (comparison > 0) { outcomes.win++; outcomes.equity++; }
+    else if (comparison === 0) { outcomes.tie++; outcomes.equity += .5; }
+    else outcomes.lose++;
+    for (let index = drawCount - 1; index >= 0; index--) {
+      const target = swaps[index];
+      [deck[index], deck[target]] = [deck[target], deck[index]];
+    }
+  }
+
+  const percent = (value: number) => value / totalSamples * 100;
+  const winOne = outcomes.win / totalSamples;
+  const tieOne = outcomes.tie / totalSamples;
+  const winAll = winOne ** opponents;
+  const unbeatenAll = (winOne + tieOne) ** opponents;
+  const tieAll = Math.max(0, unbeatenAll - winAll);
+  const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
+  return {
+    win: percent(outcomes.win),
+    tie: percent(outcomes.tie),
+    lose: percent(outcomes.lose),
+    equity: percent(outcomes.equity),
+    winHands: outcomes.win,
+    tieHands: outcomes.tie,
+    loseHands: outcomes.lose,
+    samples: totalSamples,
+    categories: categories.map(percent),
+    bestHand: HAND_NAMES[topCategory],
+    opponents,
+    method: "model_estimate",
+    table: {
+      win: winAll * 100,
+      tie: tieAll * 100,
+      lose: (1 - unbeatenAll) * 100,
+      equity: (winAll + tieAll * averageTieShare(winOne, tieOne, opponents)) * 100,
+      samples: totalSamples,
+      method: "model_estimate",
+    },
+  };
+}
+
 /**
  * Deals every unknown card from one shared deck, so board cards and all
  * opponents are correlated exactly as they are at a real table. A stable seed
@@ -209,9 +298,11 @@ export async function simulateMultiway(
   opponents: number,
   samples = MULTIWAY_MONTE_CARLO_SAMPLES,
   onProgress?: (progress: number) => void,
+  signal?: AbortSignal,
 ) {
-  if (hero.length !== 2 || board.length < 3 || board.length > 5) throw new Error("多人蒙特卡洛需要两张底牌和至少三张公共牌");
+  if (hero.length !== 2 || (board.length !== 0 && (board.length < 3 || board.length > 5))) throw new Error("多人蒙特卡洛需要两张底牌以及 0、3、4 或 5 张公共牌");
   if (opponents < 1 || opponents > 8) throw new Error("对手人数需要在 1 到 8 之间");
+  if (signal?.aborted) throw new DOMException("计算已取消", "AbortError");
   const used = new Set([...hero, ...board]);
   const deck = DECK.filter((card) => !used.has(card));
   const missingBoard = 5 - board.length;
@@ -220,10 +311,13 @@ export async function simulateMultiway(
   const seed = scenarioSeed(hero, board, opponents);
   const random = seededRandom(seed);
   const totals = { win: 0, tie: 0, lose: 0, equity: 0, equitySquared: 0 };
+  const headsUp = { win: 0, tie: 0, lose: 0, equity: 0 };
+  const categories = Array(9).fill(0) as number[];
   const heroScores = new Map<string, Score>();
   const runouts = new Map<string, { cards: string[]; category: number; equity: number; samples: number }>();
 
   for (let sample = 0; sample < totalSamples; sample++) {
+    if (sample % 256 === 0 && signal?.aborted) throw new DOMException("计算已取消", "AbortError");
     const swaps: number[] = [];
     for (let index = 0; index < drawCount; index++) {
       const target = index + Math.floor(random() * (deck.length - index));
@@ -233,18 +327,20 @@ export async function simulateMultiway(
 
     const runout = deck.slice(0, missingBoard);
     const finalBoard = [...board, ...runout];
-    const boardKey = missingBoard ? [...runout].sort().join("|") : "river";
-    let heroScore = heroScores.get(boardKey);
+    const boardKey = board.length >= 3 ? (missingBoard ? [...runout].sort().join("|") : "river") : "";
+    let heroScore = board.length >= 3 ? heroScores.get(boardKey) : undefined;
     if (!heroScore) {
       heroScore = evaluate([...hero, ...finalBoard]);
-      heroScores.set(boardKey, heroScore);
+      if (board.length >= 3) heroScores.set(boardKey, heroScore);
     }
     let tiedOpponents = 0;
     let beaten = false;
+    let firstComparison = 0;
     for (let opponent = 0; opponent < opponents; opponent++) {
       const start = missingBoard + opponent * 2;
       const opponentScore = evaluate([deck[start], deck[start + 1], ...finalBoard]);
       const comparison = compareScores(heroScore, opponentScore);
+      if (opponent === 0) firstComparison = comparison;
       if (comparison < 0) beaten = true;
       else if (comparison === 0) tiedOpponents++;
     }
@@ -254,16 +350,22 @@ export async function simulateMultiway(
     else totals.win++;
     totals.equity += share;
     totals.equitySquared += share * share;
-    const runoutTotal = runouts.get(boardKey) ?? { cards: runout, category: heroScore[0], equity: 0, samples: 0 };
-    runoutTotal.equity += share;
-    runoutTotal.samples++;
-    runouts.set(boardKey, runoutTotal);
+    if (firstComparison > 0) { headsUp.win++; headsUp.equity++; }
+    else if (firstComparison === 0) { headsUp.tie++; headsUp.equity += .5; }
+    else headsUp.lose++;
+    categories[heroScore[0]]++;
+    if (board.length >= 3) {
+      const runoutTotal = runouts.get(boardKey) ?? { cards: runout, category: heroScore[0], equity: 0, samples: 0 };
+      runoutTotal.equity += share;
+      runoutTotal.samples++;
+      runouts.set(boardKey, runoutTotal);
+    }
 
     for (let index = drawCount - 1; index >= 0; index--) {
       const target = swaps[index];
       [deck[index], deck[target]] = [deck[target], deck[index]];
     }
-    if ((sample + 1) % 5_000 === 0 || sample === totalSamples - 1) {
+    if ((sample + 1) % 2_000 === 0 || sample === totalSamples - 1) {
       onProgress?.((sample + 1) / totalSamples);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
     }
@@ -273,6 +375,7 @@ export async function simulateMultiway(
   const variance = totalSamples > 1
     ? Math.max(0, (totals.equitySquared - totals.equity ** 2 / totalSamples) / (totalSamples - 1))
     : 0;
+  const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
   return {
     win: percent(totals.win),
     tie: percent(totals.tie),
@@ -285,11 +388,17 @@ export async function simulateMultiway(
     margin95: 1.96 * Math.sqrt(variance / totalSamples) * 100,
     seed,
     runouts,
+    headsUp: {
+      win: percent(headsUp.win), tie: percent(headsUp.tie), lose: percent(headsUp.lose), equity: percent(headsUp.equity),
+      samples: totalSamples, winHands: headsUp.win, tieHands: headsUp.tie, loseHands: headsUp.lose,
+    },
+    categories: categories.map(percent),
+    bestHand: HAND_NAMES[topCategory],
     method: "monte_carlo" as const,
   };
 }
 
-function monteCarloHope(
+export function monteCarloHope(
   runouts: Map<string, { cards: string[]; category: number; equity: number; samples: number }>,
   currentScore: Score,
 ) {
@@ -447,7 +556,12 @@ export async function enumerateExact(
     return { ...base, table, opponents, method: "exact_multiway" };
   }
   const simulation = await simulateMultiway(hero, board, opponents, MULTIWAY_MONTE_CARLO_SAMPLES, (progress) => onProgress?.(.5 + progress * .5));
-  const { runouts: simulatedRunouts, ...table } = simulation;
+  const simulatedRunouts = simulation.runouts;
+  const table = {
+    win: simulation.win, tie: simulation.tie, lose: simulation.lose, equity: simulation.equity,
+    samples: simulation.samples, winHands: simulation.winHands, tieHands: simulation.tieHands, loseHands: simulation.loseHands,
+    margin95: simulation.margin95, seed: simulation.seed, method: simulation.method,
+  };
   const simulatedHope = missing > 0 ? monteCarloHope(simulatedRunouts, currentScore) : undefined;
   return { ...base, hope: simulatedHope, table, opponents, method: "exact" };
 }

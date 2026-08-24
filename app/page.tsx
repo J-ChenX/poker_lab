@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { boardCategoryCatalogue, boardCombinationDistribution, cardParts, compareScores, enumerateExact, evaluate, HAND_NAMES, RANKS, SUITS, type ExactResult, type Score } from "./poker";
-import { preflopResult } from "./preflop";
+import { useMemo, useRef, useState } from "react";
+import { boardCategoryCatalogue, boardCombinationDistribution, cardParts, compareScores, estimateMultiway, evaluate, HAND_NAMES, monteCarloHope, MULTIWAY_MONTE_CARLO_SAMPLES, RANKS, simulateMultiway, SUITS, type ExactResult, type Score } from "./poker";
 
 type PickerMode = "hole" | "board" | null;
+type CalculationPhase = "idle" | "estimating" | "simulating" | "done";
 
 function PlayingCard({ card, onClick, label, disabled = false }: { card: string | null; onClick: () => void; label: string; disabled?: boolean }) {
   const parts = card ? cardParts(card) : null;
@@ -51,10 +51,13 @@ export default function Home() {
   const [draftCards, setDraftCards] = useState<string[]>([]);
   const [result, setResult] = useState<ExactResult | null>(null);
   const [running, setRunning] = useState(false);
+  const [phase, setPhase] = useState<CalculationPhase>("idle");
   const [progress, setProgress] = useState(0);
   const [players, setPlayers] = useState(5);
   const [potSize, setPotSize] = useState(100);
   const [callAmount, setCallAmount] = useState(20);
+  const calculationToken = useRef(0);
+  const abortController = useRef<AbortController | null>(null);
 
   const validHole = hole.filter(Boolean) as string[];
   const validBoard = board.filter(Boolean) as string[];
@@ -77,13 +80,22 @@ export default function Home() {
     return score[0] >= 1 ? { category: score[0], ...madeHandRequirement(score, cards, selectedHole) } : null;
   }, [board, hole]);
 
+  const cancelCalculation = () => {
+    calculationToken.current++;
+    abortController.current?.abort();
+    abortController.current = null;
+    setRunning(false);
+    setPhase("idle");
+    setProgress(0);
+  };
+
   const openPicker = (mode: Exclude<PickerMode, null>) => {
-    if (running) return;
     setPickerMode(mode);
     setDraftCards(mode === "hole" ? validHole : validBoard);
   };
 
   const toggleDraft = (card: string) => {
+    cancelCalculation();
     setDraftCards((cards) => {
       if (cards.includes(card)) return cards.filter((value) => value !== card);
       const limit = pickerMode === "hole" ? 2 : 5;
@@ -92,6 +104,7 @@ export default function Home() {
   };
 
   const confirmPicker = () => {
+    cancelCalculation();
     if (pickerMode === "hole") setHole([...draftCards.slice(0, 2), ...Array(2).fill(null)].slice(0, 2));
     if (pickerMode === "board") setBoard([...draftCards.slice(0, 5), ...Array(5).fill(null)].slice(0, 5));
     setPickerMode(null);
@@ -100,23 +113,53 @@ export default function Home() {
 
   const calculate = async () => {
     if (!ready || running) return;
-    setRunning(true); setProgress(0); setResult(null);
+    const token = ++calculationToken.current;
+    const controller = new AbortController();
+    abortController.current = controller;
+    const selectedHole = [...validHole];
+    const selectedBoard = [...validBoard];
+    const opponents = players - 1;
+    setRunning(true); setPhase("estimating"); setProgress(0);
     try {
-      if (validBoard.length === 0) { setResult(preflopResult(validHole, players - 1)); setProgress(1); }
-      else setResult(await enumerateExact(validHole, validBoard, players - 1, setProgress));
+      const estimate = estimateMultiway(selectedHole, selectedBoard, opponents);
+      setResult(estimate);
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (controller.signal.aborted || calculationToken.current !== token) return;
+      setPhase("simulating");
+      const simulation = await simulateMultiway(
+        selectedHole,
+        selectedBoard,
+        opponents,
+        MULTIWAY_MONTE_CARLO_SAMPLES,
+        (value) => { if (calculationToken.current === token) setProgress(value); },
+        controller.signal,
+      );
+      if (controller.signal.aborted || calculationToken.current !== token) return;
+      const { runouts, headsUp, categories, bestHand, ...table } = simulation;
+      const hope = selectedBoard.length >= 3 && selectedBoard.length < 5
+        ? monteCarloHope(runouts, evaluate([...selectedHole, ...selectedBoard]))
+        : undefined;
+      setResult({ ...estimate, ...headsUp, categories, bestHand, table, hope });
     }
-    finally { setRunning(false); setProgress(1); }
+    catch (error) {
+      if (!(error instanceof DOMException && error.name === "AbortError")) console.error(error);
+    }
+    finally {
+      if (calculationToken.current === token) {
+        abortController.current = null;
+        setRunning(false); setPhase("done"); setProgress(1);
+      }
+    }
   };
 
   const reset = () => {
-    if (running) return;
+    cancelCalculation();
     setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayers(5); setPotSize(100); setCallAmount(20);
   };
 
   const pickerLimit = pickerMode === "hole" ? 2 : 5;
   const cardsUsedElsewhere = new Set(pickerMode === "hole" ? validBoard : validHole);
-  const monteCarloState = players >= 4 && validBoard.length >= 3;
-  const buttonCopy = running ? `正在${monteCarloState ? "枚举并模拟" : "无放回枚举"} ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : validBoard.length === 0 ? "查询 20 万次翻牌前模拟" : monteCarloState ? "开始 50 万次多人蒙特卡洛" : "开始无放回精确计算";
+  const buttonCopy = running ? phase === "estimating" ? "正在生成即时估算" : `正在蒙特卡洛校正 ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : "立即估算并开始精准计算";
   const potOdds = callAmount > 0 ? callAmount / (potSize + callAmount) * 100 : 0;
   const decisionEquity = result?.table?.equity ?? result?.equity ?? 0;
   const equityEdge = result ? decisionEquity - potOdds : 0;
@@ -129,7 +172,9 @@ export default function Home() {
         ? { label: "优先考虑加注", tone: "raise" }
         : { label: "可以跟注", tone: "call" };
   const calculation = result?.table ?? result;
-  const calculationMeta = !calculation ? null : calculation.method === "monte_carlo"
+  const calculationMeta = !calculation ? null : calculation.method === "model_estimate"
+    ? running ? "即时数学模型估算（4,096 个确定性探针）· 后台蒙特卡洛正在校正" : "即时数学模型估算（4,096 个确定性探针）"
+    : calculation.method === "monte_carlo"
     ? `${calculation.samples!.toLocaleString()} 次无放回模拟 · 权益 95% 误差 ±${calculation.margin95!.toFixed(2)}%`
     : calculation.method === "preflop_monte_carlo"
       ? `${calculation.samples!.toLocaleString()} 次翻牌前模拟校准`
@@ -139,31 +184,31 @@ export default function Home() {
     <main>
       <header className="topbar">
         <a className="brand" href="#calculator" aria-label="Poker Lab 首页"><span className="brand-mark">♠</span><span>POKER LAB</span></a>
-        <div className="top-actions"><div className="tagline"><span className="live-dot" />精确枚举 · 50 万次可复现模拟</div><button className="icon-button" type="button" onClick={reset} title="重新开始" aria-label="重新开始">↻</button></div>
+        <div className="top-actions"><div className="tagline"><span className="live-dot" />即时估算 · 后台 50 万次精准校正</div><button className="icon-button" type="button" onClick={reset} title="重新开始" aria-label="重新开始">↻</button></div>
       </header>
 
       <section className="workspace" id="calculator">
         <div className="input-area">
           <div className="card-panel hole-panel">
             <div className="section-head"><div><span className="step">01</span><h2>你的底牌</h2></div></div>
-            <div className="cards-row">{hole.map((card, index) => <PlayingCard key={index} card={card} disabled={running} label={`底牌 ${index + 1}`} onClick={() => openPicker("hole")} />)}</div>
+            <div className="cards-row">{hole.map((card, index) => <PlayingCard key={index} card={card} label={`底牌 ${index + 1}`} onClick={() => openPicker("hole")} />)}</div>
           </div>
 
           <div className="card-panel board-panel">
             <div className="section-head"><div><span className="step">02</span><h2>公共牌</h2></div></div>
             <div className="board-streets">
-              <div className="street-group"><span>翻牌 FLOP</span><div className="street-cards">{board.slice(0, 3).map((card, index) => <PlayingCard key={index} card={card} disabled={running} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div></div>
-              <div className="street-group"><span>转牌 TURN</span><div className="street-cards"><PlayingCard card={board[3]} disabled={running} label="公共牌 4" onClick={() => openPicker("board")} /></div></div>
-              <div className="street-group"><span>河牌 RIVER</span><div className="street-cards"><PlayingCard card={board[4]} disabled={running} label="公共牌 5" onClick={() => openPicker("board")} /></div></div>
+              <div className="street-group"><span>翻牌 FLOP</span><div className="street-cards">{board.slice(0, 3).map((card, index) => <PlayingCard key={index} card={card} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div></div>
+              <div className="street-group"><span>转牌 TURN</span><div className="street-cards"><PlayingCard card={board[3]} label="公共牌 4" onClick={() => openPicker("board")} /></div></div>
+              <div className="street-group"><span>河牌 RIVER</span><div className="street-cards"><PlayingCard card={board[4]} label="公共牌 5" onClick={() => openPicker("board")} /></div></div>
             </div>
           </div>
 
           <div className="table-controls">
             <div className="controls-head"><div><span className="step">03</span><div><h3>牌桌参数</h3><p>人数包含你自己 · 金额单位保持一致即可</p></div></div><div className="odds-inline"><span>所需底池赔率</span><strong>{potOdds.toFixed(1)}%</strong></div></div>
             <div className="controls-row">
-              <label className="control-field"><span>总玩家人数</span><div><b>人数</b><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></div></label>
-              <label className="control-field"><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potSize} disabled={running} onChange={(event) => setPotSize(Math.max(0, Number(event.target.value) || 0))} /></div></label>
-              <label className="control-field"><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callAmount} disabled={running} onChange={(event) => setCallAmount(Math.max(0, Number(event.target.value) || 0))} /></div></label>
+              <label className="control-field"><span>总玩家人数</span><div><b>人数</b><input type="number" min="2" max="9" step="1" value={players} onChange={(event) => { cancelCalculation(); const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></div></label>
+              <label className="control-field"><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potSize} onChange={(event) => setPotSize(Math.max(0, Number(event.target.value) || 0))} /></div></label>
+              <label className="control-field"><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callAmount} onChange={(event) => setCallAmount(Math.max(0, Number(event.target.value) || 0))} /></div></label>
             </div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
             {!ready && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
@@ -181,7 +226,7 @@ export default function Home() {
             </div>
             {calculationMeta && <p className="calculation-meta">{calculationMeta}</p>}
             {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
-          </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EQUITY ENGINE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "单挑与三人桌精确枚举；四人以上使用 50 万次共享牌堆蒙特卡洛。" : "只选择两张底牌即可查询 20 万次预计算校准；公共牌仍支持一次多选。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
+          </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">TWO-STAGE ENGINE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>点击后立即显示数学模型估算，并在后台以 50 万次无放回蒙特卡洛更新为最终概率。</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 即时估算 <b>→</b><span>3</span> 精准校正</div></div>}
         </aside>
       </section>
 
@@ -196,7 +241,7 @@ export default function Home() {
         <section className="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
           <div className="picker-head"><div><p className="eyebrow">SELECT CARDS</p><h2 id="picker-title">{pickerMode === "hole" ? "选择底牌" : "选择公共牌"}</h2><p>点击选中，再点一次取消 · 已选 {draftCards.length}/{pickerLimit}</p></div><button className="close-button" type="button" onClick={() => setPickerMode(null)} aria-label="关闭选牌">×</button></div>
           <div className="deck-grid">{SUITS.map((suit) => <div className={`suit-row ${suit.code === "h" || suit.code === "d" ? "red" : ""}`} key={suit.code}><div className="suit-name"><b>{suit.symbol}</b><span>{suit.name}</span></div>{[...RANKS].reverse().map((rank) => { const code = `${rank}${suit.code}`; const isSelected = draftCards.includes(code); const unavailable = cardsUsedElsewhere.has(code) || (!isSelected && draftCards.length >= pickerLimit); return <button type="button" key={code} disabled={unavailable} className={isSelected ? "selected" : ""} aria-pressed={isSelected} onClick={() => toggleDraft(code)}><strong>{rank}</strong><span>{suit.symbol}</span></button>; })}</div>)}</div>
-          <div className="picker-foot"><button type="button" className="clear-card" onClick={() => setDraftCards([])}>清空已选</button><span>已用牌自动禁用</span><button type="button" className="confirm-cards" onClick={confirmPicker}>确认 {draftCards.length} 张 <b>→</b></button></div>
+          <div className="picker-foot"><button type="button" className="clear-card" onClick={() => { cancelCalculation(); setDraftCards([]); }}>清空已选</button><span>修改选牌会立即停止旧计算</span><button type="button" className="confirm-cards" onClick={confirmPicker}>确认 {draftCards.length} 张 <b>→</b></button></div>
         </section>
       </div>}
     </main>

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boardCategoryCatalogue, enumerateExact, exactMultiwayDealCount, simulateMultiway } from "../app/poker";
+import { boardCategoryCatalogue, enumerateExact, estimateMultiway, exactMultiwayDealCount, simulateMultiway } from "../app/poker";
 import { PREFLOP_MULTIWAY } from "../app/preflop-calibration.generated";
 import { preflopResult } from "../app/preflop";
 
@@ -54,6 +54,25 @@ test("deals reproducible shared-deck Monte Carlo samples", async () => {
   assert.equal(first.tie, second.tie);
   assert.equal(first.equity, second.equity);
   assert.ok(first.margin95 > 0 && first.margin95 < 1);
+});
+
+test("returns an immediate mathematical estimate before simulation", () => {
+  const result = estimateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4);
+  assert.equal(result.method, "model_estimate");
+  assert.equal(result.table?.method, "model_estimate");
+  assert.equal(result.samples, 4_096);
+  assert.ok(result.table!.win > 0 && result.table!.win < 100);
+  assert.ok(Math.abs(result.table!.win + result.table!.tie + result.table!.lose - 100) < 1e-9);
+});
+
+test("aborts Monte Carlo when the selected cards change", async () => {
+  const controller = new AbortController();
+  await assert.rejects(
+    simulateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4, 50_000, (progress) => {
+      if (progress >= .04) controller.abort();
+    }, controller.signal),
+    (error: unknown) => error instanceof DOMException && error.name === "AbortError",
+  );
 });
 
 test("counts three-player flop outcomes exactly without enumerating hand pairs", async () => {

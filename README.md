@@ -96,8 +96,9 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 
 ## Poker equity engine
 
-- Heads-up and three-player post-flop results are enumerated exactly without replacement.
-- Tables with four or more players use 500,000 deterministic Monte Carlo deals from one shared deck. The engine counts strict wins, ties, losses, split-pot equity, and a 95% equity margin.
+- The interactive calculator first returns a 4,096-probe deterministic mathematical estimate, then replaces it with 500,000 Monte Carlo deals from one shared deck.
+- Card or player-count changes abort the active simulation; stale work is prevented from replacing results for the new state.
+- The final engine counts strict wins, ties, losses, split-pot equity, and a 95% equity margin. Exact post-flop enumeration remains available as a reference implementation and test oracle.
 - Multiway preflop results use a generated 169-class table with 200,000 deterministic deals per class. Regenerate it with `npm run generate:preflop-calibration` and validate production results with the independent five-card reference evaluator in `npm run validate:monte-carlo`.
 
 ## Learn More
