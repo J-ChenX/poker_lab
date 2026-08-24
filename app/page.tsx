@@ -9,7 +9,7 @@ type PickerMode = "hole" | "board" | null;
 function PlayingCard({ card, onClick, compact = false, label, disabled = false }: { card: string | null; onClick: () => void; compact?: boolean; label: string; disabled?: boolean }) {
   const parts = card ? cardParts(card) : null;
   return (
-    <button type="button" disabled={disabled} aria-label={card ? `${label}：${parts!.name}${parts!.rank}` : `${label}：打开批量选牌`} className={`playing-card ${compact ? "compact" : ""} ${!card ? "ghost" : ""} ${parts?.code === "h" || parts?.code === "d" ? "red" : ""}`} onClick={onClick}>
+    <button type="button" disabled={disabled} aria-label={card ? `${label}：${parts!.name}${parts!.rank}` : `${label}：打开选牌`} className={`playing-card ${compact ? "compact" : ""} ${!card ? "ghost" : ""} ${parts?.code === "h" || parts?.code === "d" ? "red" : ""}`} onClick={onClick}>
       {parts ? <><span className="card-rank">{parts.rank}</span><span className="card-suit">{parts.symbol}</span></> : <><span className="plus">＋</span><small>选牌</small></>}
     </button>
   );
@@ -131,27 +131,28 @@ export default function Home() {
       <section className="workspace" id="calculator">
         <div className="input-area">
           <div className="card-panel hole-panel">
-            <div className="section-head"><div><span className="step">01</span><h2>你的底牌</h2></div><button className="text-action" type="button" onClick={() => openPicker("hole")}>批量选择</button></div>
+            <div className="section-head"><div><span className="step">01</span><h2>你的底牌</h2></div></div>
             <div className="cards-row">{hole.map((card, index) => <PlayingCard key={index} card={card} disabled={running} label={`底牌 ${index + 1}`} onClick={() => openPicker("hole")} />)}</div>
           </div>
 
           <div className="card-panel board-panel">
-            <div className="section-head"><div><span className="step">02</span><h2>公共牌</h2></div><button className="text-action" type="button" onClick={() => openPicker("board")}>多选后确认</button></div>
-            <div className="street-labels"><span>翻牌 FLOP</span><span>转牌 TURN</span><span>河牌 RIVER</span></div>
-            <div className="cards-row board">{board.map((card, index) => <PlayingCard key={index} card={card} compact disabled={running} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div>
+            <div className="section-head"><div><span className="step">02</span><h2>公共牌</h2></div></div>
+            <div className="board-streets">
+              <div className="street-group"><span>翻牌 FLOP</span><div className="street-cards">{board.slice(0, 3).map((card, index) => <PlayingCard key={index} card={card} compact disabled={running} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div></div>
+              <div className="street-group"><span>转牌 TURN</span><div className="street-cards"><PlayingCard card={board[3]} compact disabled={running} label="公共牌 4" onClick={() => openPicker("board")} /></div></div>
+              <div className="street-group"><span>河牌 RIVER</span><div className="street-cards"><PlayingCard card={board[4]} compact disabled={running} label="公共牌 5" onClick={() => openPicker("board")} /></div></div>
+            </div>
           </div>
 
-          <div className="settings-panel exact-settings">
-            <div className="setting exact-note"><div><span className="step">03</span><div><h3>相关性补偿</h3><p>无放回组合 · 多人校准曲线</p></div></div><span className="verified-mark">✓ 页面无抽样</span></div>
-            <div className="setting exact-note"><div><span className="step">04</span><div><h3>总玩家人数</h3><p>包含你自己 · 支持 2–9 人</p></div></div><label className="player-input"><span>人数</span><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></label></div>
+          <div className="table-controls">
+            <div className="controls-head"><div><span className="step">03</span><div><h3>牌桌参数</h3><p>人数包含你自己 · 金额单位保持一致即可</p></div></div><div className="odds-inline"><span>所需底池赔率</span><strong>{potOdds.toFixed(1)}%</strong></div></div>
+            <div className="controls-row">
+              <label className="control-field"><span>总玩家人数</span><div><b>人数</b><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></div></label>
+              <label className="control-field"><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potSize} disabled={running} onChange={(event) => setPotSize(Math.max(0, Number(event.target.value) || 0))} /></div></label>
+              <label className="control-field"><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callAmount} disabled={running} onChange={(event) => setCallAmount(Math.max(0, Number(event.target.value) || 0))} /></div></label>
+            </div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
             {!ready && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
-          </div>
-          <div className="funding-panel">
-            <div className="funding-head"><div><span className="step">05</span><div><h3>底池与投入</h3><p>用于计算底池赔率和跟注 EV</p></div></div><span>金额单位保持一致即可</span></div>
-            <label><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potSize} onChange={(event) => setPotSize(Math.max(0, Number(event.target.value) || 0))} /></div></label>
-            <label><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callAmount} onChange={(event) => setCallAmount(Math.max(0, Number(event.target.value) || 0))} /></div></label>
-            <div className="odds-preview"><span>所需底池赔率</span><strong>{potOdds.toFixed(1)}%</strong></div>
           </div>
         </div>
 
@@ -178,7 +179,7 @@ export default function Home() {
 
       {pickerMode && <div className="picker-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerMode(null); }}>
         <section className="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">
-          <div className="picker-head"><div><p className="eyebrow">MULTI SELECT</p><h2 id="picker-title">{pickerMode === "hole" ? "批量选择底牌" : "批量选择公共牌"}</h2><p>点击选中，再点一次取消 · 已选 {draftCards.length}/{pickerLimit}</p></div><button className="close-button" type="button" onClick={() => setPickerMode(null)} aria-label="关闭选牌">×</button></div>
+          <div className="picker-head"><div><p className="eyebrow">SELECT CARDS</p><h2 id="picker-title">{pickerMode === "hole" ? "选择底牌" : "选择公共牌"}</h2><p>点击选中，再点一次取消 · 已选 {draftCards.length}/{pickerLimit}</p></div><button className="close-button" type="button" onClick={() => setPickerMode(null)} aria-label="关闭选牌">×</button></div>
           <div className="deck-grid">{SUITS.map((suit) => <div className={`suit-row ${suit.code === "h" || suit.code === "d" ? "red" : ""}`} key={suit.code}><div className="suit-name"><b>{suit.symbol}</b><span>{suit.name}</span></div>{[...RANKS].reverse().map((rank) => { const code = `${rank}${suit.code}`; const isSelected = draftCards.includes(code); const unavailable = cardsUsedElsewhere.has(code) || (!isSelected && draftCards.length >= pickerLimit); return <button type="button" key={code} disabled={unavailable} className={isSelected ? "selected" : ""} aria-pressed={isSelected} onClick={() => toggleDraft(code)}><strong>{rank}</strong><span>{suit.symbol}</span></button>; })}</div>)}</div>
           <div className="picker-foot"><button type="button" className="clear-card" onClick={() => setDraftCards([])}>清空已选</button><span>已用牌自动禁用</span><button type="button" className="confirm-cards" onClick={confirmPicker}>确认 {draftCards.length} 张 <b>→</b></button></div>
         </section>
