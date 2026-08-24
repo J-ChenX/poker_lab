@@ -33,6 +33,14 @@ export type ExactResult = {
   bestHand: string;
   opponents: number;
   method: "exact" | "exact_multiway" | "preflop";
+  hope?: {
+    currentHand: string;
+    improve: number;
+    competitive: number;
+    improvedEquity: number;
+    blankEquity: number;
+    nextCards: Array<{ card: string; equity: number }>;
+  };
 };
 export type BoardVariant = {
   key: string;
@@ -203,6 +211,9 @@ export async function enumerateExact(
   const categories = Array(9).fill(0) as number[];
   const projected = { win: 0, tie: 0, lose: 0, equity: 0 };
   const exactTwo = { wins: 0, ties: 0, losses: 0, equity: 0, samples: 0 };
+  const currentScore = evaluate([...hero, ...board]);
+  const hopeTotals = { improved: 0, competitive: 0, improvedEquity: 0, blankEquity: 0 };
+  const nextCardEquities = new Map<string, { total: number; count: number }>();
   let equity = 0;
 
   for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
@@ -251,8 +262,9 @@ export async function enumerateExact(
         else { outcomes[2]++; runoutOutcomes[2]++; }
       }
     }
+    const runoutHands = runoutOutcomes[0] + runoutOutcomes[1] + runoutOutcomes[2];
+    let runoutEquity = (runoutOutcomes[0] + runoutOutcomes[1] / 2) / runoutHands * 100;
     if (opponents > 1) {
-      const runoutHands = runoutOutcomes[0] + runoutOutcomes[1] + runoutOutcomes[2];
       const totalTwo = Number(matchingCount(opponentDeck.length, 2));
       const winTwo = twoEdgeMatchings(runoutOutcomes[0], degrees.win);
       const tieTwo = twoEdgeMatchings(runoutOutcomes[1], degrees.tie);
@@ -266,6 +278,7 @@ export async function enumerateExact(
       exactTwo.losses += totalTwo - unbeatenTwo;
       exactTwo.equity += equityTwo;
       exactTwo.samples += totalTwo;
+      runoutEquity = equityTwo / totalTwo * 100;
 
       if (opponents > 2) {
         const totalThree = Number(matchingCount(opponentDeck.length, 3));
@@ -277,10 +290,25 @@ export async function enumerateExact(
         const winAll = extrapolateThirdOrder(winOne, winTwo / totalTwo, winThree / totalThree, opponents);
         const unbeatenAll = Math.max(winAll, extrapolateThirdOrder(unbeatenOne, unbeatenTwo / totalTwo, unbeatenThree / totalThree, opponents));
         const tieAll = Math.max(0, unbeatenAll - winAll);
+        runoutEquity = (winAll + tieAll * averageTieShare(winOne, tieOne, opponents)) * 100;
         projected.win += winAll * 100 / runouts.length;
         projected.tie += tieAll * 100 / runouts.length;
         projected.lose += (1 - unbeatenAll) * 100 / runouts.length;
         projected.equity += (winAll + tieAll * averageTieShare(winOne, tieOne, opponents)) * 100 / runouts.length;
+      }
+    }
+    if (missing > 0) {
+      const improved = heroScore[0] > currentScore[0];
+      if (improved) {
+        hopeTotals.improved++;
+        hopeTotals.improvedEquity += runoutEquity;
+      } else hopeTotals.blankEquity += runoutEquity;
+      if (runoutEquity >= 50) hopeTotals.competitive++;
+      for (const card of runout) {
+        const total = nextCardEquities.get(card) ?? { total: 0, count: 0 };
+        total.total += runoutEquity;
+        total.count++;
+        nextCardEquities.set(card, total);
       }
     }
     if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
@@ -292,10 +320,23 @@ export async function enumerateExact(
   const samples = outcomes[0] + outcomes[1] + outcomes[2];
   const percent = (value: number) => value / samples * 100;
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
+  const improvedCount = hopeTotals.improved;
+  const blankCount = runouts.length - improvedCount;
+  const hope = missing > 0 ? {
+    currentHand: HAND_NAMES[currentScore[0]],
+    improve: improvedCount / runouts.length * 100,
+    competitive: hopeTotals.competitive / runouts.length * 100,
+    improvedEquity: improvedCount ? hopeTotals.improvedEquity / improvedCount : 0,
+    blankEquity: blankCount ? hopeTotals.blankEquity / blankCount : 0,
+    nextCards: [...nextCardEquities.entries()]
+      .map(([card, value]) => ({ card, equity: value.total / value.count }))
+      .sort((first, second) => second.equity - first.equity || DECK.indexOf(second.card) - DECK.indexOf(first.card))
+      .slice(0, 6),
+  } : undefined;
   const base = {
     win: percent(outcomes[0]), tie: percent(outcomes[1]), lose: percent(outcomes[2]), equity: percent(equity), samples,
     winHands: outcomes[0], tieHands: outcomes[1], loseHands: outcomes[2],
-    categories: categories.map(percent), bestHand: HAND_NAMES[topCategory],
+    categories: categories.map(percent), bestHand: HAND_NAMES[topCategory], hope,
   };
   if (opponents === 1) return { ...base, opponents, method: "exact" };
   if (opponents === 2) {

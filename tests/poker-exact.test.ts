@@ -48,3 +48,21 @@ test("counts three-player flop outcomes exactly without enumerating hand pairs",
   assert.equal(result.table?.samples, Number(exactMultiwayDealCount(3, 2)));
   assert.equal(result.table!.winHands! + result.table!.tieHands! + result.table!.loseHands!, result.table!.samples);
 });
+
+test("hope model exposes weak five-player outlook instead of treating any category change as a win", async () => {
+  const result = await enumerateExact(["7s", "5h"], ["Ks", "Kh", "2c"], 4);
+  assert.ok(result.hope);
+  assert.equal(result.hope.currentHand, "一对");
+  assert.ok(result.hope.competitive < 5);
+  assert.ok(result.hope.improvedEquity < 25);
+  assert.ok(result.hope.blankEquity < 1);
+  assert.equal(result.hope.nextCards.length, 6);
+  assert.ok(result.hope.nextCards.every(({ equity }, index, cards) => index === 0 || cards[index - 1].equity >= equity));
+});
+
+test("hope is only shown while future community cards remain", async () => {
+  const turn = await enumerateExact(["As", "Qh"], ["Ks", "9h", "2c", "4d"], 1);
+  const river = await enumerateExact(["As", "Qh"], ["Ks", "9h", "2c", "4d", "7s"], 1);
+  assert.ok(turn.hope);
+  assert.equal(river.hope, undefined);
+});
