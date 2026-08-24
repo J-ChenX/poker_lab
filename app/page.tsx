@@ -28,7 +28,7 @@ export default function Home() {
   const [result, setResult] = useState<ExactResult | null>(null);
   const [running, setRunning] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [players, setPlayers] = useState(2);
+  const [players, setPlayers] = useState(5);
   const [potSize, setPotSize] = useState(100);
   const [callAmount, setCallAmount] = useState(20);
 
@@ -73,7 +73,7 @@ export default function Home() {
 
   const reset = () => {
     if (running) return;
-    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayers(2); setPotSize(100); setCallAmount(20);
+    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayers(5); setPotSize(100); setCallAmount(20);
   };
 
   const pickerLimit = pickerMode === "hole" ? 2 : 5;
@@ -119,7 +119,7 @@ export default function Home() {
 
           <div className="settings-panel exact-settings">
             <div className="setting exact-note"><div><span className="step">03</span><div><h3>相关性补偿</h3><p>无放回组合 · 多人校准曲线</p></div></div><span className="verified-mark">✓ 页面无抽样</span></div>
-            <div className="setting exact-note"><div><span className="step">04</span><div><h3>总玩家人数</h3><p>包含你自己 · 支持 2–9 人</p></div></div><label className="player-input"><span>人数</span><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 2); setResult(null); }} /></label></div>
+            <div className="setting exact-note"><div><span className="step">04</span><div><h3>总玩家人数</h3><p>包含你自己 · 支持 2–9 人</p></div></div><label className="player-input"><span>人数</span><input type="number" min="2" max="9" step="1" value={players} disabled={running} onChange={(event) => { const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></label></div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
             {!ready && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
           </div>
