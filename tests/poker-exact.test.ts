@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { enumerateExact, exactMultiwayDealCount } from "../app/poker";
+import { boardCategoryCatalogue, enumerateExact, exactMultiwayDealCount } from "../app/poker";
 import { PREFLOP_MULTIWAY } from "../app/preflop-calibration.generated";
 import { preflopResult } from "../app/preflop";
 
@@ -65,4 +65,16 @@ test("hope is only shown while future community cards remain", async () => {
   const river = await enumerateExact(["As", "Qh"], ["Ks", "9h", "2c", "4d", "7s"], 1);
   assert.ok(turn.hope);
   assert.equal(river.hope, undefined);
+});
+
+test("catalogue keeps non-adjacent two-rank straight requirements", () => {
+  const catalogue = boardCategoryCatalogue(["5d", "3h", "2s", "7c"], ["Ac", "4c"]);
+  const straights = catalogue.find(({ category }) => category === 4)!.variants.map(({ label }) => label);
+  assert.deepEqual(straights, ["46", "A4"]);
+});
+
+test("catalogue still folds a two-rank straight into a one-rank requirement", () => {
+  const catalogue = boardCategoryCatalogue(["10s", "9s", "8s", "6h", "6d"], ["As", "Kh"]);
+  const straights = catalogue.find(({ category }) => category === 4)!.variants.map(({ label }) => label);
+  assert.deepEqual(straights, ["JQ", "7"]);
 });

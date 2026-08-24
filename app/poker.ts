@@ -422,7 +422,7 @@ function straightRequirement(score: Score, board: string[]): Omit<BoardVariant, 
   const window = straightWindow(score[1]);
   const boardValues = new Set(board.map(valueOf));
   const missing = window.filter((value) => !boardValues.has(value));
-  if (missing.length === 2 && window.indexOf(missing[1]) - window.indexOf(missing[0]) !== 1) return null;
+  if (missing.length === 2 && missing.some((value) => straightHigh([...boardValues, value]) > 0)) return null;
   const label = missing.length ? missing.map(rankLabel).join("") : "公共牌已成顺子";
   return { key: `${score[1]}-${label}`, label, strength: [score[1]] };
 }
@@ -491,7 +491,7 @@ function variantDetails(score: Score, holeCards: [string, string], board: string
     const window = straightWindow(score[1]);
     const suitedBoardValues = new Set(board.filter((card) => card.endsWith(suit.code)).map(valueOf));
     const missing = window.filter((value) => !suitedBoardValues.has(value));
-    if (missing.length === 2 && window.indexOf(missing[1]) - window.indexOf(missing[0]) !== 1) return null;
+    if (missing.length === 2 && missing.some((value) => straightHigh([...suitedBoardValues, value]) > 0)) return null;
     const label = missing.length ? missing.map((value) => `${rankLabel(value)}${suit.symbol}`).join(" ") : `${suit.symbol} 公共牌已成牌`;
     return { key: `${label}-${suit.code}`, label, strength: [score[1], -SUITS.findIndex((item) => item.code === suit.code)], suitCode: suit.code };
   }
