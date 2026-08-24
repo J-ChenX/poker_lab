@@ -128,10 +128,9 @@ export default function Home() {
 
         <aside className={`result-panel ${result ? "has-result" : ""}`} aria-live="polite">
           {result ? <>
-            <div className="result-top"><div><p className="eyebrow">HAND-BY-HAND COMPARISON</p><h2>{result.table ? `${result.opponents + 1} 人桌胜率` : "单个随机对手"}</h2></div><span className="method-badge">{result.method === "preflop" ? "169 类逐手牌查表" : `${result.samples.toLocaleString()} 种牌局逐一比较`}</span></div>
-            <div className="equity-summary"><Ring primary={result.table?.win ?? result.win} secondary={result.table ? result.win : undefined} players={result.opponents + 1} /><p className="result-label">{result.table ? `${result.opponents + 1} 人桌胜率优先 · 单人胜率作为对照` : "胜率 = 比你小的牌 ÷ 全部可用牌"}</p></div>
+            <div className="result-top"><p className="eyebrow">HAND-BY-HAND COMPARISON</p></div>
+            <Ring primary={result.table?.win ?? result.win} secondary={result.table ? result.win : undefined} players={result.opponents + 1} />
             <div className="outcome-list">
-              <div><span><i className="dot win" />比你小 · 胜</span><strong>{result.win.toFixed(2)}%</strong>{result.winHands !== undefined && <small>{result.winHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot tie" />完全相同 · 平</span><strong>{result.tie.toFixed(2)}%</strong>{result.tieHands !== undefined && <small>{result.tieHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
