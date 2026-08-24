@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { boardCategoryCatalogue, cardParts, compareScores, enumerateExact, evaluate, HAND_NAMES, RANKS, SUITS, type ExactResult, type Score } from "./poker";
+import { boardCategoryCatalogue, cardParts, compareScores, enumerateExact, evaluate, HAND_NAMES, heroCategoryDistribution, RANKS, SUITS, type ExactResult, type Score } from "./poker";
 import { preflopResult } from "./preflop";
 
 type PickerMode = "hole" | "board" | null;
@@ -18,7 +18,8 @@ function PlayingCard({ card, onClick, label, disabled = false }: { card: string 
 function Ring({ primary, players }: { primary: number; players: number }) {
   const safe = Math.max(0, Math.min(100, primary));
   const physical = 100 / players;
-  return <div className="equity-ring multi" aria-label={`${players}人胜率 ${safe.toFixed(1)}%，物理胜率 ${physical.toFixed(1)}%`} style={{ background: `conic-gradient(var(--lime) ${safe * 3.6}deg, #34413b 0deg)` }}><div className="ring-center"><span className="ring-label">{players}人胜率</span><div className="ring-primary"><strong>{safe.toFixed(1)}</strong><b>%</b></div><div className="ring-secondary"><span>物理胜率 · 100% ÷ {players}</span><strong>{physical.toFixed(1)}%</strong></div></div></div>;
+  const multiOnTop = safe <= physical;
+  return <div className="equity-ring multi" aria-label={`${players}人胜率 ${safe.toFixed(1)}%，物理胜率 ${physical.toFixed(1)}%`}><span className="ring-track" /><span className="ring-arc ring-arc-multi" style={{ background: `conic-gradient(var(--lime) ${safe * 3.6}deg, transparent 0deg)`, zIndex: multiOnTop ? 3 : 2 }} /><span className="ring-arc ring-arc-physical" style={{ background: `conic-gradient(var(--green) ${physical * 3.6}deg, transparent 0deg)`, zIndex: multiOnTop ? 2 : 3 }} /><div className="ring-center"><span className="ring-label">{players}人胜率</span><div className="ring-primary"><strong>{safe.toFixed(1)}</strong><b>%</b></div><div className="ring-secondary"><strong>{physical.toFixed(1)}%</strong></div></div></div>;
 }
 
 const scoreRank = (value: number) => RANKS[value - 2] ?? String(value);
@@ -57,6 +58,11 @@ export default function Home() {
   const validHole = hole.filter(Boolean) as string[];
   const validBoard = board.filter(Boolean) as string[];
   const ready = validHole.length === 2 && (validBoard.length === 0 || validBoard.length >= 3);
+  const liveDistribution = useMemo(() => {
+    const selectedHole = hole.filter(Boolean) as string[];
+    const selectedBoard = board.filter(Boolean) as string[];
+    return heroCategoryDistribution(selectedHole, selectedBoard);
+  }, [board, hole]);
   const boardCatalogue = useMemo(
     () => boardCategoryCatalogue(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
     [board, hole],
@@ -162,18 +168,17 @@ export default function Home() {
             <div className="result-top"><p className="eyebrow">HAND-BY-HAND COMPARISON</p></div>
             <Ring primary={result.table?.win ?? result.win} players={result.opponents + 1} />
             <div className="outcome-list">
-              <div><span><i className="dot win" />单人胜率</span><strong>{result.win.toFixed(2)}%</strong>{result.winHands !== undefined && <small>{result.winHands.toLocaleString()} 手</small>}</div>
+              <div><span><i className="dot win" />比你小 · 胜</span><strong>{result.win.toFixed(2)}%</strong>{result.winHands !== undefined && <small>{result.winHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot tie" />完全相同 · 平</span><strong>{result.tie.toFixed(2)}%</strong>{result.tieHands !== undefined && <small>{result.tieHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
             {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
-            {result.categories.some((value) => value > 0) ? <div className="distribution"><div className="distribution-head"><h3>最终牌型分布</h3><span>最常见：{result.bestHand}</span></div>{HAND_NAMES.map((name, index) => result.categories[index] > .004 && <div className="hand-row" key={name}><span>{name}</span><div><i style={{ width: `${Math.max(result.categories[index], .8)}%` }} /></div><strong>{result.categories[index].toFixed(1)}%</strong></div>)}</div> : <div className="preflop-note"><span>{result.bestHand}</span><p>翻牌前结果来自 169 类起手牌穷举表；发出翻牌后可查看最终牌型分布。</p></div>}
           </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EXACT MODE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "点击开始后，将完整遍历所有剩余牌局，不做随机抽样。" : "只选择两张底牌即可计算；公共牌仍支持一次多选、再次点击取消。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
         </aside>
       </section>
 
       <section className="leaders-section catalogue-section">
-        <div className="leaders-intro"><p className="eyebrow">BOARD CATALOGUE</p><h2>当前公共牌的<br />完整牌型目录</h2><p>固定按同花顺、四条、葫芦、同花、顺子、三条、两对、对子排列；每一类显示实际所需底牌并由大到小排序。</p></div>
+        <div className="leaders-intro live-distribution-intro"><p className="eyebrow">LIVE HAND DISTRIBUTION</p>{liveDistribution ? <><div className="live-mini-head"><div><span>九类牌型概率</span><strong>最常见：{liveDistribution.bestHand === "一对" ? "对子" : liveDistribution.bestHand}</strong></div><small>{liveDistribution.samples.toLocaleString()} 种公共牌结果</small></div><div className="live-probability-list">{HAND_NAMES.map((name, index) => { const value = liveDistribution.categories[index]; return <div className="live-probability-row" key={name}><span>{name === "一对" ? "对子" : name}</span><div><i style={{ width: `${value}%` }} /></div><strong>{value.toFixed(1)}%</strong></div>; })}</div><p className="live-note">每次选牌后自动穷举更新，无需开始多人胜率计算。</p></> : <div className="live-intro-empty"><span>3+</span><h2>九类牌型概率</h2><p>选择两张底牌与至少三张公共牌后实时出现。</p></div>}</div>
         {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.map((section, index) => { const isMyHand = madeHand?.category === section.category; const items = [...section.variants.map((variant) => ({ type: "variant" as const, strength: variant.strength, variant })), ...(isMyHand ? [{ type: "hero" as const, strength: madeHand.strength }] : [])].sort((first, second) => compareScores(second.strength, first.strength)); return <article className={`catalogue-row ${items.length ? "" : "empty"}`} key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{items.length ? `${items.length} 种牌力` : "当前无此牌型"}</small></div><div className="variant-list">{items.map((item) => item.type === "hero" ? <div className="variant-chip hero-made-chip" key="hero-made-hand"><strong>{madeHand!.label}</strong><span>我的牌</span></div> : <div className={`variant-chip ${item.variant.suitCode === "h" || item.variant.suitCode === "d" ? "red" : ""}`} key={item.variant.key}><strong>{item.variant.label}</strong><span>{item.variant.comboCount} 组底牌</span></div>)}{!items.length && <span className="unavailable">—</span>}</div></article>; })}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 
