@@ -199,7 +199,7 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .live-probability-row>div { height:4px; background:#dddcd4; overflow:hidden; }
 .live-probability-row i { display:block; height:100%; background:var(--green); }
 .live-probability-row>strong { text-align:right; font-size:9px; }
-.live-note { margin:14px 0 0!important; padding-top:13px; border-top:1px solid var(--line); }
+.leaders-intro>.live-note { margin:14px 0 0!important; padding-top:13px; border-top:1px solid var(--line); max-width:none; white-space:nowrap; font-size:clamp(8px,.72vw,11px); }
 .live-intro-empty { padding:30px 0; }
 .live-intro-empty>span { width:52px; height:52px; display:grid; place-items:center; border:1px dashed #aaa99f; border-radius:50%; color:var(--green); font:700 16px Georgia,serif; }
 .live-intro-empty h2 { margin:20px 0 10px; font-size:30px; }
