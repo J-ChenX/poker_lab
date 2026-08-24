@@ -6,10 +6,10 @@ import { preflopResult } from "./preflop";
 
 type PickerMode = "hole" | "board" | null;
 
-function PlayingCard({ card, onClick, compact = false, label, disabled = false }: { card: string | null; onClick: () => void; compact?: boolean; label: string; disabled?: boolean }) {
+function PlayingCard({ card, onClick, label, disabled = false }: { card: string | null; onClick: () => void; label: string; disabled?: boolean }) {
   const parts = card ? cardParts(card) : null;
   return (
-    <button type="button" disabled={disabled} aria-label={card ? `${label}：${parts!.name}${parts!.rank}` : `${label}：打开选牌`} className={`playing-card ${compact ? "compact" : ""} ${!card ? "ghost" : ""} ${parts?.code === "h" || parts?.code === "d" ? "red" : ""}`} onClick={onClick}>
+    <button type="button" disabled={disabled} aria-label={card ? `${label}：${parts!.name}${parts!.rank}` : `${label}：打开选牌`} className={`playing-card ${!card ? "ghost" : ""} ${parts?.code === "h" || parts?.code === "d" ? "red" : ""}`} onClick={onClick}>
       {parts ? <><span className="card-rank">{parts.rank}</span><span className="card-suit">{parts.symbol}</span></> : <><span className="plus">＋</span><small>选牌</small></>}
     </button>
   );
@@ -42,7 +42,7 @@ function madeHandRequirement(score: Score, cards: string[], holeCards: string[])
 }
 
 export default function Home() {
-  const [hole, setHole] = useState<(string | null)[]>(["As", "Kh"]);
+  const [hole, setHole] = useState<(string | null)[]>([null, null]);
   const [board, setBoard] = useState<(string | null)[]>([null, null, null, null, null]);
   const [pickerMode, setPickerMode] = useState<PickerMode>(null);
   const [draftCards, setDraftCards] = useState<string[]>([]);
@@ -138,9 +138,9 @@ export default function Home() {
           <div className="card-panel board-panel">
             <div className="section-head"><div><span className="step">02</span><h2>公共牌</h2></div></div>
             <div className="board-streets">
-              <div className="street-group"><span>翻牌 FLOP</span><div className="street-cards">{board.slice(0, 3).map((card, index) => <PlayingCard key={index} card={card} compact disabled={running} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div></div>
-              <div className="street-group"><span>转牌 TURN</span><div className="street-cards"><PlayingCard card={board[3]} compact disabled={running} label="公共牌 4" onClick={() => openPicker("board")} /></div></div>
-              <div className="street-group"><span>河牌 RIVER</span><div className="street-cards"><PlayingCard card={board[4]} compact disabled={running} label="公共牌 5" onClick={() => openPicker("board")} /></div></div>
+              <div className="street-group"><span>翻牌 FLOP</span><div className="street-cards">{board.slice(0, 3).map((card, index) => <PlayingCard key={index} card={card} disabled={running} label={`公共牌 ${index + 1}`} onClick={() => openPicker("board")} />)}</div></div>
+              <div className="street-group"><span>转牌 TURN</span><div className="street-cards"><PlayingCard card={board[3]} disabled={running} label="公共牌 4" onClick={() => openPicker("board")} /></div></div>
+              <div className="street-group"><span>河牌 RIVER</span><div className="street-cards"><PlayingCard card={board[4]} disabled={running} label="公共牌 5" onClick={() => openPicker("board")} /></div></div>
             </div>
           </div>
 
