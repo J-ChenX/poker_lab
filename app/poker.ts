@@ -118,17 +118,31 @@ function combinations(cards: string[], size: number) {
   return result;
 }
 
-export function heroCategoryDistribution(hero: string[], board: string[]) {
+export function boardCombinationDistribution(hero: string[], board: string[]) {
   if (hero.length !== 2 || board.length < 3 || board.length > 5) return null;
   const used = new Set([...hero, ...board]);
   const available = DECK.filter((card) => !used.has(card));
-  const runouts = combinations(available, 5 - board.length);
+  const drawCount = 7 - board.length;
   const counts = Array(9).fill(0) as number[];
-  for (const runout of runouts) counts[evaluate([...hero, ...board, ...runout])[0]]++;
-  const samples = runouts.length;
+  const selected: string[] = [];
+  let samples = 0;
+  const enumerate = (start: number) => {
+    if (selected.length === drawCount) {
+      counts[evaluate([...board, ...selected])[0]]++;
+      samples++;
+      return;
+    }
+    const needed = drawCount - selected.length;
+    for (let index = start; index <= available.length - needed; index++) {
+      selected.push(available[index]);
+      enumerate(index + 1);
+      selected.pop();
+    }
+  };
+  enumerate(0);
   const categories = counts.map((count) => count / samples * 100);
   const topCategory = counts.reduce((best, count, index) => count > counts[best] ? index : best, 0);
-  return { categories, bestHand: HAND_NAMES[topCategory], samples };
+  return { categories, bestHand: HAND_NAMES[topCategory], samples, drawCount };
 }
 
 function chooseBigInt(total: number, size: number) {
