@@ -115,8 +115,8 @@ export default function Home() {
 
   const pickerLimit = pickerMode === "hole" ? 2 : 5;
   const cardsUsedElsewhere = new Set(pickerMode === "hole" ? validBoard : validHole);
-  const exactMultiwayState = players === 3 && validBoard.length >= 4;
-  const buttonCopy = running ? `正在无放回枚举 ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : validBoard.length === 0 ? "查询翻牌前逐手牌胜率" : exactMultiwayState ? "开始三人桌无放回精确计算" : "开始逐手牌精确计算";
+  const monteCarloState = players >= 4 && validBoard.length >= 3;
+  const buttonCopy = running ? `正在${monteCarloState ? "枚举并模拟" : "无放回枚举"} ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : validBoard.length === 0 ? "查询 20 万次翻牌前模拟" : monteCarloState ? "开始 50 万次多人蒙特卡洛" : "开始无放回精确计算";
   const potOdds = callAmount > 0 ? callAmount / (potSize + callAmount) * 100 : 0;
   const decisionEquity = result?.table?.equity ?? result?.equity ?? 0;
   const equityEdge = result ? decisionEquity - potOdds : 0;
@@ -128,12 +128,18 @@ export default function Home() {
       : decisionEquity >= 55 && equityEdge >= 10
         ? { label: "优先考虑加注", tone: "raise" }
         : { label: "可以跟注", tone: "call" };
+  const calculation = result?.table ?? result;
+  const calculationMeta = !calculation ? null : calculation.method === "monte_carlo"
+    ? `${calculation.samples!.toLocaleString()} 次无放回模拟 · 权益 95% 误差 ±${calculation.margin95!.toFixed(2)}%`
+    : calculation.method === "preflop_monte_carlo"
+      ? `${calculation.samples!.toLocaleString()} 次翻牌前模拟校准`
+      : `${calculation.samples.toLocaleString()} 种无放回精确结果`;
 
   return (
     <main>
       <header className="topbar">
         <a className="brand" href="#calculator" aria-label="Poker Lab 首页"><span className="brand-mark">♠</span><span>POKER LAB</span></a>
-        <div className="top-actions"><div className="tagline"><span className="live-dot" />本地正向枚举 · 无随机采样</div><button className="icon-button" type="button" onClick={reset} title="重新开始" aria-label="重新开始">↻</button></div>
+        <div className="top-actions"><div className="tagline"><span className="live-dot" />精确枚举 · 50 万次可复现模拟</div><button className="icon-button" type="button" onClick={reset} title="重新开始" aria-label="重新开始">↻</button></div>
       </header>
 
       <section className="workspace" id="calculator">
@@ -173,8 +179,9 @@ export default function Home() {
               <div><span><i className="dot tie" />完全相同 · 平</span><strong>{result.tie.toFixed(2)}%</strong>{result.tieHands !== undefined && <small>{result.tieHands.toLocaleString()} 手</small>}</div>
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
+            {calculationMeta && <p className="calculation-meta">{calculationMeta}</p>}
             {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
-          </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EXACT MODE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "点击开始后，将完整遍历所有剩余牌局，不做随机抽样。" : "只选择两张底牌即可计算；公共牌仍支持一次多选、再次点击取消。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
+          </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">EQUITY ENGINE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>{validBoard.length >= 3 ? "单挑与三人桌精确枚举；四人以上使用 50 万次共享牌堆蒙特卡洛。" : "只选择两张底牌即可查询 20 万次预计算校准；公共牌仍支持一次多选。"}</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 输入资金 <b>→</b><span>3</span> 决策辅助</div></div>}
         </aside>
       </section>
 

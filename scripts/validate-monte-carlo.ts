@@ -107,9 +107,9 @@ function simulate({ hero, board, opponents }: Scenario, samples: number, seed: n
   return { win: percent(totals.win), tie: percent(totals.tie), lose: percent(totals.lose), equity: percent(totals.equity) };
 }
 
-function margin95(percent: number) {
+function margin95(percent: number, samples = trials) {
   const probability = percent / 100;
-  return 1.96 * Math.sqrt(probability * (1 - probability) / trials) * 100;
+  return 1.96 * Math.sqrt(probability * (1 - probability) / samples) * 100;
 }
 
 const scenarios: Scenario[] = [
@@ -151,16 +151,22 @@ for (let index = 0; index < selectedScenarios.length; index++) {
     : await enumerateExact(scenario.hero, scenario.board, scenario.opponents);
   const monteCarlo = simulate(scenario, trials, 0x9e3779b9 + index * 0x10001);
   const expected: Rates | null = scenario.opponents === 1 ? production : production.table ?? null;
+  const productionMethod = scenario.opponents === 1 ? production.method : production.table?.method;
+  const productionSamples = productionMethod === "monte_carlo" || productionMethod === "preflop_monte_carlo"
+    ? production.table?.samples
+    : undefined;
   const metrics = expected ? (["win", "tie", "lose", "equity"] as const).map((metric) => ({
       metric,
       production: expected[metric],
       monteCarlo: monteCarlo[metric],
       deviationPoints: monteCarlo[metric] - expected[metric],
-      margin95: margin95(monteCarlo[metric]),
-      within95: Math.abs(monteCarlo[metric] - expected[metric]) <= margin95(monteCarlo[metric]),
+      referenceMargin95: margin95(monteCarlo[metric]),
+      productionMargin95: productionSamples ? margin95(expected[metric], productionSamples) : 0,
+      combinedMargin95: Math.hypot(margin95(monteCarlo[metric]), productionSamples ? margin95(expected[metric], productionSamples) : 0),
+      within95: Math.abs(monteCarlo[metric] - expected[metric]) <= Math.hypot(margin95(monteCarlo[metric]), productionSamples ? margin95(expected[metric], productionSamples) : 0),
     })) : null;
   console.log(JSON.stringify({
     scenario: scenario.name, trials, hero: scenario.hero, board: scenario.board, opponents: scenario.opponents,
-    productionMethod: scenario.opponents === 1 ? production.method : production.table?.method, monteCarlo, metrics,
+    productionMethod, monteCarlo, metrics,
   }));
 }

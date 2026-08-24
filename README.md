@@ -94,6 +94,12 @@ actions tied to the current ChatGPT user. Leave public content anonymous.
 - `npm test`: build the starter and verify its rendered loading skeleton
 - `npm run db:generate`: generate Drizzle migrations after schema changes
 
+## Poker equity engine
+
+- Heads-up and three-player post-flop results are enumerated exactly without replacement.
+- Tables with four or more players use 500,000 deterministic Monte Carlo deals from one shared deck. The engine counts strict wins, ties, losses, split-pot equity, and a 95% equity margin.
+- Multiway preflop results use a generated 169-class table with 200,000 deterministic deals per class. Regenerate it with `npm run generate:preflop-calibration` and validate production results with the independent five-card reference evaluator in `npm run validate:monte-carlo`.
+
 ## Learn More
 
 - [vinext Documentation](https://github.com/cloudflare/vinext)

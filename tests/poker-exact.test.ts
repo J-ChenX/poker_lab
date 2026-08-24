@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boardCategoryCatalogue, enumerateExact, exactMultiwayDealCount } from "../app/poker";
+import { boardCategoryCatalogue, enumerateExact, exactMultiwayDealCount, simulateMultiway } from "../app/poker";
 import { PREFLOP_MULTIWAY } from "../app/preflop-calibration.generated";
 import { preflopResult } from "../app/preflop";
 
@@ -23,7 +23,7 @@ test("enumerates an exact three-player river result", async () => {
 
 test("returns the calibrated multiplayer result for KK five-handed", () => {
   const result = preflopResult(["Ks", "Kh"], 4);
-  assert.equal(result.table?.method, "preflop_compensation");
+  assert.equal(result.table?.method, "preflop_monte_carlo");
   assert.equal(result.table?.win, 49.548);
   assert.equal(result.win, 82.12);
 });
@@ -40,6 +40,20 @@ test("keeps every preflop calibration curve valid and monotone", () => {
       previousWin = win;
     }
   }
+});
+
+test("deals reproducible shared-deck Monte Carlo samples", async () => {
+  const first = await simulateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4, 20_000);
+  const second = await simulateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4, 20_000);
+  assert.equal(first.method, "monte_carlo");
+  assert.equal(first.samples, 20_000);
+  assert.equal(first.winHands + first.tieHands + first.loseHands, first.samples);
+  assert.equal(first.runouts.size, 46);
+  assert.equal(first.seed, second.seed);
+  assert.equal(first.win, second.win);
+  assert.equal(first.tie, second.tie);
+  assert.equal(first.equity, second.equity);
+  assert.ok(first.margin95 > 0 && first.margin95 < 1);
 });
 
 test("counts three-player flop outcomes exactly without enumerating hand pairs", async () => {
