@@ -72,6 +72,13 @@ export default function Scorekeeper() {
     showMessage(`已删除 ${name}`);
   };
 
+  const resetAllScores = () => {
+    if (!players.length) return;
+    if (!window.confirm("确定将所有人员的积分清零吗？人员名单会保留。")) return;
+    setPlayers((current) => current.map((player) => ({ ...player, score: 0 })));
+    showMessage("所有人员积分已清零");
+  };
+
   const addScores = (changes: Map<string, number>) => {
     setPlayers((current) => current.map((player) => ({ ...player, score: player.score + (changes.get(player.name) ?? 0) })));
   };
@@ -150,7 +157,7 @@ export default function Scorekeeper() {
         <aside className={styles.roster}>
           <div className={styles.panelHead}><div><span>01</span><h2>人员与积分</h2></div><small>{hydrated ? `${players.length} 人` : "读取中"}</small></div>
           <form className={styles.registerForm} onSubmit={addPlayer}><label><span>添加人员</span><input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={20} placeholder="输入姓名或昵称" /></label><button disabled={!newName.trim()}>＋ 添加</button></form>
-          <div className={styles.jsonActions}><button type="button" onClick={exportJson} disabled={!players.length}>导出 JSON</button><button type="button" onClick={() => importRef.current?.click()}>导入 JSON</button><input ref={importRef} type="file" accept="application/json,.json" onChange={importJson} /></div>
+          <div className={styles.jsonActions}><button type="button" onClick={exportJson} disabled={!players.length}>导出 JSON</button><button type="button" onClick={() => importRef.current?.click()}>导入 JSON</button><button className={styles.resetScores} type="button" onClick={resetAllScores} disabled={!players.length}>全部积分清零</button><input ref={importRef} type="file" accept="application/json,.json" onChange={importJson} /></div>
           <div className={styles.peopleList}>{hydrated && players.length === 0 && <div className={styles.empty}><b>还没有人员</b><span>添加姓名后即可开始记分。</span></div>}{sortedPlayers.map((player, index) => <div className={styles.person} key={player.name}><i>{index + 1}</i><span className={styles.avatar}>{player.name.slice(0, 2).toUpperCase()}</span><p><strong>{player.name}</strong><small>{player.score < 0 ? "负积分" : index === 0 ? "当前领先" : "积分账户"}</small></p><b className={player.score < 0 ? styles.negative : ""}>{player.score}<small>分</small></b><button className={styles.deletePerson} type="button" onClick={() => deletePlayer(player.name)} aria-label={`删除 ${player.name}`}>×</button></div>)}</div>
         </aside>
 
