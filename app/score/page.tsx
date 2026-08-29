@@ -31,7 +31,6 @@ export default function Scorekeeper() {
   const [rankedPlayers, setRankedPlayers] = useState<string[]>(["", "", ""]);
   const [modal, setModal] = useState<ModalType>(null);
   const [actionPlayer, setActionPlayer] = useState("");
-  const [reviveQuantity, setReviveQuantity] = useState(1);
   const [knockoutWinners, setKnockoutWinners] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
@@ -86,16 +85,15 @@ export default function Scorekeeper() {
   };
 
   const openModal = (type: Exclude<ModalType, null>) => {
-    setModal(type); setActionPlayer(""); setReviveQuantity(1); setKnockoutWinners([]); setNotice(""); setError("");
+    setModal(type); setActionPlayer(""); setKnockoutWinners([]); setNotice(""); setError("");
   };
-  const closeModal = () => { setModal(null); setActionPlayer(""); setReviveQuantity(1); setKnockoutWinners([]); };
+  const closeModal = () => { setModal(null); setActionPlayer(""); setKnockoutWinners([]); };
 
   const applyRevive = () => {
     if (!actionPlayer) return showError("请选择复活人员");
     if (!unitReviveCost) return showError("当前人数或等级不可复活");
-    const quantity = Math.max(1, Math.floor(reviveQuantity || 1));
-    addScores(new Map([[actionPlayer, -(unitReviveCost * quantity)]]));
-    closeModal(); showMessage(`${actionPlayer} 复活 ${quantity} 次，共扣除 ${unitReviveCost * quantity} 分`);
+    addScores(new Map([[actionPlayer, -unitReviveCost]]));
+    closeModal(); showMessage(`${actionPlayer} 复活一次，扣除 ${unitReviveCost} 分`);
   };
 
   const toggleKnockoutWinner = (name: string) => setKnockoutWinners((current) => current.includes(name) ? current.filter((value) => value !== name) : [...current, name]);
@@ -138,6 +136,14 @@ export default function Scorekeeper() {
         <div className={styles.heroStats}><div><span>登记人员</span><strong>{players.length}</strong></div><div><span>本局人数</span><strong>{playerCount}</strong></div><div><span>当前等级</span><strong>L{currentLevel}</strong><small>{currentBlind.small.toLocaleString()} / {currentBlind.big.toLocaleString()}</small></div></div>
       </section>
 
+      <section className={styles.statusBoard} aria-label="当前牌桌状态">
+        <div className={styles.statusLevel}><span>当前轮次</span><strong>L{currentLevel}</strong><small>{playerCount} 人局</small></div>
+        <div><span>小盲</span><strong>{formatNumber(currentBlind.small)}</strong><small>SB</small></div>
+        <div><span>大盲</span><strong>{formatNumber(currentBlind.big)}</strong><small>BB</small></div>
+        <div><span>复活价格</span><strong>{unitReviveCost ? `−${unitReviveCost}` : "—"}</strong><small>{unitReviveCost ? "积分 / 次" : "不可复活"}</small></div>
+        <div><span>复活筹码</span><strong>{currentBlind.chips ? formatNumber(currentBlind.chips) : "—"}</strong><small>{currentBlind.chips ? "筹码" : "不可复活"}</small></div>
+      </section>
+
       {(notice || error) && <div className={`${styles.notice} ${error ? styles.errorNotice : ""}`} role="status">{error || notice}<button type="button" onClick={() => { setNotice(""); setError(""); }}>×</button></div>}
 
       <section className={styles.dashboard}>
@@ -162,7 +168,7 @@ export default function Scorekeeper() {
           </section>
 
           <section className={styles.quickActions}>
-            <button type="button" onClick={() => openModal("revive")} disabled={!players.length || !unitReviveCost}><span>↻</span><div><strong>复活扣分</strong><small>{unitReviveCost ? `当前每次扣 ${unitReviveCost} 分，次数不限` : "当前设置不可复活"}</small></div><b>打开 →</b></button>
+            <button type="button" onClick={() => openModal("revive")} disabled={!players.length || !unitReviveCost}><span>↻</span><div><strong>复活扣分</strong><small>{unitReviveCost ? `每次确认记录一次，扣 ${unitReviveCost} 分` : "当前设置不可复活"}</small></div><b>打开 →</b></button>
             <button type="button" onClick={() => openModal("knockout")} disabled={!players.length}><span>✦</span><div><strong>淘汰加分</strong><small>选择得分人员，系统按人数直接加分</small></div><b>打开 →</b></button>
           </section>
         </section>
@@ -172,7 +178,7 @@ export default function Scorekeeper() {
 
       {modal && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeModal()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="action-title">
         <header><div><p className={styles.eyebrow}>{modal === "revive" ? "REVIVAL COST" : "KNOCKOUT BONUS"}</p><h2 id="action-title">{modal === "revive" ? "复活扣分" : "淘汰加分"}</h2></div><button type="button" onClick={closeModal}>×</button></header>
-        {modal === "revive" ? <div className={styles.modalBody}><div className={styles.actionSummary}><span>L{currentLevel} · {formatNumber(currentBlind.small)} / {formatNumber(currentBlind.big)}</span><strong>单次 −{unitReviveCost} 分</strong></div><label><span>复活人员</span><select value={actionPlayer} onChange={(event) => setActionPlayer(event.target.value)}><option value="">选择人员</option>{players.map((player) => <option key={player.name}>{player.name}</option>)}</select></label><label><span>复活次数（无上限）</span><input type="number" min="1" step="1" value={reviveQuantity} onChange={(event) => setReviveQuantity(Math.max(1, Math.floor(Number(event.target.value) || 1)))} /></label><div className={styles.actionTotal}><span>本次合计扣除</span><strong className={styles.negative}>−{unitReviveCost * reviveQuantity}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyRevive}>确认扣分</button></div> : <div className={styles.modalBody}><div className={styles.actionSummary}><span>{playerCount} 人局 · 淘汰基础分</span><strong>{knockoutUnit} 分</strong></div><p className={styles.modalHint}>选择一名或多名得分人员。多人共同淘汰时，每人获得基础分除以人数后向上取整的整数。</p><div className={styles.modalPeople}>{players.map((player) => <button className={knockoutWinners.includes(player.name) ? styles.modalPersonSelected : ""} type="button" key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{knockoutWinners.includes(player.name) ? `＋${knockoutShareValue}` : "选择"}</small></button>)}</div><div className={styles.actionTotal}><span>每位获得</span><strong>＋{knockoutWinners.length ? knockoutShareValue : 0}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyKnockout}>确认加分</button></div>}
+        {modal === "revive" ? <div className={styles.modalBody}><div className={styles.actionSummary}><span>L{currentLevel} · {formatNumber(currentBlind.small)} / {formatNumber(currentBlind.big)}</span><strong>单次 −{unitReviveCost} 分</strong></div><label><span>复活人员</span><select value={actionPlayer} onChange={(event) => setActionPlayer(event.target.value)}><option value="">选择人员</option>{players.map((player) => <option key={player.name}>{player.name}</option>)}</select></label><div className={styles.actionTotal}><span>本次扣除</span><strong className={styles.negative}>−{unitReviveCost}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyRevive}>确认一次复活扣分</button></div> : <div className={styles.modalBody}><div className={styles.actionSummary}><span>{playerCount} 人局 · 淘汰基础分</span><strong>{knockoutUnit} 分</strong></div><p className={styles.modalHint}>选择一名或多名得分人员。多人共同淘汰时，每人获得基础分除以人数后向上取整的整数。</p><div className={styles.modalPeople}>{players.map((player) => <button className={knockoutWinners.includes(player.name) ? styles.modalPersonSelected : ""} type="button" key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{knockoutWinners.includes(player.name) ? `＋${knockoutShareValue}` : "选择"}</small></button>)}</div><div className={styles.actionTotal}><span>每位获得</span><strong>＋{knockoutWinners.length ? knockoutShareValue : 0}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyKnockout}>确认加分</button></div>}
       </section></div>}
     </main>
   );
