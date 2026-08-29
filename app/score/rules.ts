@@ -20,6 +20,9 @@ export const BLIND_LEVELS = [
   { level: 5, small: 500, big: 1_000, chips: 60_000 },
   { level: 6, small: 700, big: 1_400, chips: 65_000 },
   { level: 7, small: 1_000, big: 2_000, chips: 70_000 },
+  { level: 8, small: 1_300, big: 2_600, chips: null },
+  { level: 9, small: 1_600, big: 3_200, chips: null },
+  { level: 10, small: 2_000, big: 4_000, chips: null },
 ] as const;
 
 export function placementScore(playerCount: number, rank: number) {
@@ -33,6 +36,10 @@ export function placementScore(playerCount: number, rank: number) {
     playerCount - 6,
   ];
   return Math.max(0, formulas[rank - 1] ?? 0);
+}
+
+export function scoringPlaceCount(playerCount: number) {
+  return Math.min(6, Math.ceil(playerCount / 2));
 }
 
 export function knockoutBase(playerCount: number) {

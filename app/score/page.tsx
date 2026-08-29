@@ -1,163 +1,179 @@
 "use client";
 
-import { FormEvent, useEffect, useMemo, useState } from "react";
-import { BLIND_LEVELS, knockoutBase, knockoutShare, placementScore, reviveCost } from "./rules";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import { BLIND_LEVELS, knockoutBase, knockoutShare, placementScore, reviveCost, scoringPlaceCount } from "./rules";
 import styles from "./score.module.css";
 
-type Player = { id: string; name: string; score: number; gamesPlayed: number };
-type GameEntry = { playerId: string; name: string; rank: number; placementScore: number; revivalCost: number; knockoutScore: number; totalDelta: number };
-type Game = { id: string; playerCount: number; createdAt: string; entries: GameEntry[] };
-type Seat = { playerId: string; revivals: number[] };
-type KnockoutEvent = { id: string; victimPlayerId: string; winnerPlayerIds: string[] };
+type Player = { name: string; score: number };
+type ModalType = "revive" | "knockout" | null;
 
-const blankSeats = (count: number): Seat[] => Array.from({ length: count }, () => ({ playerId: "", revivals: [] }));
+const STORAGE_KEY = "poker-scorekeeper-players-json-v1";
 const signed = (value: number) => `${value > 0 ? "+" : ""}${value}`;
+const formatNumber = (value: number) => value.toLocaleString("zh-CN");
+
+function readStoredPlayers(): Player[] {
+  try {
+    const value: unknown = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "[]");
+    if (!Array.isArray(value)) return [];
+    return value
+      .filter((item): item is Player => Boolean(item) && typeof item === "object" && typeof (item as Player).name === "string" && Number.isFinite(Number((item as Player).score)))
+      .map((item) => ({ name: item.name.trim(), score: Number(item.score) }))
+      .filter((item) => item.name);
+  } catch { return []; }
+}
 
 export default function Scorekeeper() {
   const [players, setPlayers] = useState<Player[]>([]);
-  const [games, setGames] = useState<Game[]>([]);
-  const [playerCount, setPlayerCount] = useState(5);
-  const [seats, setSeats] = useState<Seat[]>(() => blankSeats(5));
-  const [knockouts, setKnockouts] = useState<KnockoutEvent[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [newName, setNewName] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [message, setMessage] = useState("");
+  const [playerCount, setPlayerCount] = useState(5);
+  const [currentLevel, setCurrentLevel] = useState(1);
+  const [rankedPlayers, setRankedPlayers] = useState<string[]>(["", "", ""]);
+  const [modal, setModal] = useState<ModalType>(null);
+  const [actionPlayer, setActionPlayer] = useState("");
+  const [reviveQuantity, setReviveQuantity] = useState(1);
+  const [knockoutWinners, setKnockoutWinners] = useState<string[]>([]);
+  const [notice, setNotice] = useState("");
   const [error, setError] = useState("");
+  const importRef = useRef<HTMLInputElement>(null);
 
-  const applySnapshot = (data: { players: Player[]; games: Game[] }) => {
-    setPlayers(data.players ?? []);
-    setGames(data.games ?? []);
+  useEffect(() => { setPlayers(readStoredPlayers()); setHydrated(true); }, []);
+  useEffect(() => { if (hydrated) localStorage.setItem(STORAGE_KEY, JSON.stringify(players)); }, [hydrated, players]);
+
+  const sortedPlayers = useMemo(() => [...players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-CN")), [players]);
+  const paidPlaces = scoringPlaceCount(playerCount);
+  const currentBlind = BLIND_LEVELS[currentLevel - 1];
+  const unitReviveCost = reviveCost(playerCount, currentLevel);
+  const knockoutUnit = knockoutBase(playerCount);
+  const selectedRanked = rankedPlayers.filter(Boolean);
+  const knockoutShareValue = knockoutWinners.length ? knockoutShare(playerCount, knockoutWinners.length) : knockoutUnit;
+
+  const showMessage = (text: string) => { setNotice(text); setError(""); };
+  const showError = (text: string) => { setError(text); setNotice(""); };
+
+  const changePlayerCount = (count: number) => {
+    const places = scoringPlaceCount(count);
+    setPlayerCount(count); setRankedPlayers(Array(places).fill("")); closeModal(); setNotice(""); setError("");
   };
 
-  useEffect(() => {
-    fetch("/api/score")
-      .then(async (response) => {
-        const data = await response.json();
-        if (!response.ok) throw new Error(data.error ?? "读取失败");
-        applySnapshot(data);
-      })
-      .catch((reason) => setError(reason instanceof Error ? reason.message : "读取失败"))
-      .finally(() => setLoading(false));
-  }, []);
-
-  const playerById = useMemo(() => new Map(players.map((player) => [player.id, player])), [players]);
-  const selectedIds = seats.map((seat) => seat.playerId).filter(Boolean);
-
-  const knockoutPoints = useMemo(() => {
-    const points = new Map<string, number>();
-    for (const event of knockouts) {
-      const winners = [...new Set(event.winnerPlayerIds.filter(Boolean))];
-      if (!event.victimPlayerId || !winners.length) continue;
-      const share = knockoutShare(playerCount, winners.length);
-      for (const id of winners) points.set(id, (points.get(id) ?? 0) + share);
-    }
-    return points;
-  }, [knockouts, playerCount]);
-
-  const previews = seats.map((seat, index) => {
-    const placement = placementScore(playerCount, index + 1);
-    const revival = seat.revivals.reduce((sum, level) => sum + reviveCost(playerCount, level), 0);
-    const knockout = knockoutPoints.get(seat.playerId) ?? 0;
-    return { placement, revival, knockout, total: placement + knockout - revival };
-  });
-
-  const changeCount = (count: number) => {
-    setPlayerCount(count); setSeats(blankSeats(count)); setKnockouts([]); setMessage(""); setError("");
-  };
-
-  const createPlayer = async (event: FormEvent) => {
+  const addPlayer = (event: FormEvent) => {
     event.preventDefault();
-    if (!newName.trim()) return;
-    setSaving(true); setError(""); setMessage("");
-    try {
-      const response = await fetch("/api/score", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "createPlayer", name: newName }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "登记失败");
-      applySnapshot(data); setNewName(""); setMessage(`已登记 ${newName.trim()}`);
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "登记失败"); }
-    finally { setSaving(false); }
+    const name = newName.trim();
+    if (!name) return;
+    if (players.some((player) => player.name.toLocaleLowerCase() === name.toLocaleLowerCase())) return showError("该人员已经存在");
+    setPlayers((current) => [...current, { name, score: 0 }]); setNewName(""); showMessage(`已添加 ${name}`);
   };
 
-  const setSeatPlayer = (index: number, playerId: string) => setSeats((current) => current.map((seat, seatIndex) => seatIndex === index ? { ...seat, playerId } : seat));
-  const setRevival = (seatIndex: number, revivalIndex: number, level: number) => setSeats((current) => current.map((seat, index) => {
-    if (index !== seatIndex) return seat;
-    const next = [...seat.revivals];
-    if (!level) next.splice(revivalIndex, 1); else next[revivalIndex] = level;
-    return { ...seat, revivals: next.filter(Boolean).slice(0, 2) };
-  }));
-  const addKnockout = () => setKnockouts((current) => [...current, { id: crypto.randomUUID(), victimPlayerId: "", winnerPlayerIds: [] }]);
-  const toggleWinner = (eventId: string, playerId: string) => setKnockouts((current) => current.map((event) => event.id !== eventId ? event : { ...event, winnerPlayerIds: event.winnerPlayerIds.includes(playerId) ? event.winnerPlayerIds.filter((id) => id !== playerId) : [...event.winnerPlayerIds, playerId] }));
-
-  const saveGame = async () => {
-    setError(""); setMessage("");
-    if (players.length < playerCount) return setError(`请先登记至少 ${playerCount} 位人员`);
-    if (selectedIds.length !== playerCount || new Set(selectedIds).size !== playerCount) return setError("请为每个名次选择不同的参与者");
-    if (knockouts.some((event) => !event.victimPlayerId || !event.winnerPlayerIds.length)) return setError("请补全或删除未完成的淘汰记录");
-    setSaving(true);
-    try {
-      const response = await fetch("/api/score", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ action: "recordGame", playerCount, results: seats.map((seat, index) => ({ playerId: seat.playerId, rank: index + 1, revivals: seat.revivals })), knockoutEvents: knockouts.map(({ victimPlayerId, winnerPlayerIds }) => ({ victimPlayerId, winnerPlayerIds })) }) });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error ?? "保存失败");
-      applySnapshot(data); setSeats(blankSeats(playerCount)); setKnockouts([]); setMessage("本局积分已结算并写入排行榜");
-    } catch (reason) { setError(reason instanceof Error ? reason.message : "保存失败"); }
-    finally { setSaving(false); }
+  const deletePlayer = (name: string) => {
+    if (!window.confirm(`确定删除“${name}”吗？该人员的积分也会一并删除。`)) return;
+    setPlayers((current) => current.filter((player) => player.name !== name));
+    setRankedPlayers((current) => current.map((value) => value === name ? "" : value));
+    setKnockoutWinners((current) => current.filter((value) => value !== name));
+    if (actionPlayer === name) setActionPlayer("");
+    showMessage(`已删除 ${name}`);
   };
 
-  const leader = players[0];
+  const addScores = (changes: Map<string, number>) => {
+    setPlayers((current) => current.map((player) => ({ ...player, score: player.score + (changes.get(player.name) ?? 0) })));
+  };
+
+  const settlePlacement = () => {
+    if (players.length < paidPlaces) return showError(`请先添加至少 ${paidPlaces} 位人员`);
+    if (selectedRanked.length !== paidPlaces || new Set(selectedRanked).size !== paidPlaces) return showError("请为每个计分名次选择不同的人员");
+    addScores(new Map(rankedPlayers.map((name, index) => [name, placementScore(playerCount, index + 1)])));
+    setRankedPlayers(Array(paidPlaces).fill(""));
+    showMessage(`已结算 ${playerCount} 人局前 ${paidPlaces} 名的名次积分`);
+  };
+
+  const openModal = (type: Exclude<ModalType, null>) => {
+    setModal(type); setActionPlayer(""); setReviveQuantity(1); setKnockoutWinners([]); setNotice(""); setError("");
+  };
+  const closeModal = () => { setModal(null); setActionPlayer(""); setReviveQuantity(1); setKnockoutWinners([]); };
+
+  const applyRevive = () => {
+    if (!actionPlayer) return showError("请选择复活人员");
+    if (!unitReviveCost) return showError("当前人数或等级不可复活");
+    const quantity = Math.max(1, Math.floor(reviveQuantity || 1));
+    addScores(new Map([[actionPlayer, -(unitReviveCost * quantity)]]));
+    closeModal(); showMessage(`${actionPlayer} 复活 ${quantity} 次，共扣除 ${unitReviveCost * quantity} 分`);
+  };
+
+  const toggleKnockoutWinner = (name: string) => setKnockoutWinners((current) => current.includes(name) ? current.filter((value) => value !== name) : [...current, name]);
+  const applyKnockout = () => {
+    if (!knockoutWinners.length) return showError("请至少选择一名得分人员");
+    const share = knockoutShare(playerCount, knockoutWinners.length);
+    addScores(new Map(knockoutWinners.map((name) => [name, share])));
+    const names = knockoutWinners.join("、"); closeModal(); showMessage(`${names} 各获得 ${share} 点淘汰积分`);
+  };
+
+  const exportJson = () => {
+    const blob = new Blob([JSON.stringify(players, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const anchor = document.createElement("a");
+    anchor.href = url; anchor.download = `德州扑克积分-${new Date().toISOString().slice(0, 10)}.json`; anchor.click(); URL.revokeObjectURL(url);
+    showMessage("人员与积分 JSON 已导出");
+  };
+
+  const importJson = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]; event.target.value = ""; if (!file) return;
+    try {
+      const value: unknown = JSON.parse(await file.text());
+      if (!Array.isArray(value)) throw new Error();
+      const imported = value.map((item) => ({ name: String((item as Player).name ?? "").trim(), score: Number((item as Player).score) })).filter((item) => item.name && Number.isFinite(item.score));
+      if (!imported.length && value.length) throw new Error();
+      const deduplicated = [...new Map(imported.map((item) => [item.name.toLocaleLowerCase(), item])).values()];
+      setPlayers(deduplicated); setRankedPlayers(Array(paidPlaces).fill("")); showMessage(`已导入 ${deduplicated.length} 位人员`);
+    } catch { showError("JSON 格式无效，只接受姓名和积分字段"); }
+  };
+
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
         <a className={styles.brand} href="/score"><span>♠</span><strong>牌桌积分簿</strong></a>
         <nav><a href="/">胜率工具</a><a className={styles.activeNav} href="/score">积分系统</a></nav>
-        <div className={styles.headerMeta}><span className={styles.liveDot} />数据自动保存</div>
+        <div className={styles.headerMeta}><span className={styles.liveDot} />本机 JSON 自动保存</div>
       </header>
 
       <section className={styles.hero}>
-        <div><p className={styles.eyebrow}>TABLE SCOREKEEPER · 3–12 PLAYERS</p><h1>每一局，都算得清楚。</h1><p>名次自动加分、复活自动扣分、淘汰自动奖励；长期排名不再取决于一晚的筹码起伏。</p></div>
-        <div className={styles.heroStats}><div><span>登记人员</span><strong>{players.length}</strong></div><div><span>已记牌局</span><strong>{games.length}</strong></div><div><span>当前榜首</span><strong className={styles.leaderName}>{leader?.name ?? "—"}</strong><small>{leader ? `${leader.score} 分` : "等待首局"}</small></div></div>
+        <div><p className={styles.eyebrow}>TABLE SCOREKEEPER · 3–12 PLAYERS</p><h1>简单记分，长期排名。</h1><p>只保留姓名和积分。名次一键结算，复活即时扣分，淘汰即时加分；积分可以持续降到负数。</p></div>
+        <div className={styles.heroStats}><div><span>登记人员</span><strong>{players.length}</strong></div><div><span>本局人数</span><strong>{playerCount}</strong></div><div><span>当前等级</span><strong>L{currentLevel}</strong><small>{currentBlind.small.toLocaleString()} / {currentBlind.big.toLocaleString()}</small></div></div>
       </section>
 
-      {(message || error) && <div className={`${styles.notice} ${error ? styles.errorNotice : ""}`} role="status">{error || message}<button type="button" onClick={() => { setMessage(""); setError(""); }}>×</button></div>}
+      {(notice || error) && <div className={`${styles.notice} ${error ? styles.errorNotice : ""}`} role="status">{error || notice}<button type="button" onClick={() => { setNotice(""); setError(""); }}>×</button></div>}
 
       <section className={styles.dashboard}>
         <aside className={styles.roster}>
-          <div className={styles.panelHead}><div><span>01</span><h2>人员与积分榜</h2></div><small>{loading ? "正在读取…" : `${players.length} 人`}</small></div>
-          <form className={styles.registerForm} onSubmit={createPlayer}><label><span>登记新人员</span><input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={20} placeholder="输入姓名或昵称" aria-label="输入姓名或昵称" /></label><button disabled={saving || !newName.trim()}>＋ 登记</button></form>
-          <div className={styles.peopleList}>{!loading && players.length === 0 && <div className={styles.empty}><b>还没有人员</b><span>先登记牌友，再开始记录牌局。</span></div>}{players.map((player, index) => <div className={styles.person} key={player.id}><i>{index + 1}</i><span className={styles.avatar}>{player.name.slice(0, 2).toUpperCase()}</span><p><strong>{player.name}</strong><small>{player.gamesPlayed} 局</small></p><b>{player.score}<small>分</small></b></div>)}</div>
+          <div className={styles.panelHead}><div><span>01</span><h2>人员与积分</h2></div><small>{hydrated ? `${players.length} 人` : "读取中"}</small></div>
+          <form className={styles.registerForm} onSubmit={addPlayer}><label><span>添加人员</span><input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={20} placeholder="输入姓名或昵称" /></label><button disabled={!newName.trim()}>＋ 添加</button></form>
+          <div className={styles.jsonActions}><button type="button" onClick={exportJson} disabled={!players.length}>导出 JSON</button><button type="button" onClick={() => importRef.current?.click()}>导入 JSON</button><input ref={importRef} type="file" accept="application/json,.json" onChange={importJson} /></div>
+          <div className={styles.peopleList}>{hydrated && players.length === 0 && <div className={styles.empty}><b>还没有人员</b><span>添加姓名后即可开始记分。</span></div>}{sortedPlayers.map((player, index) => <div className={styles.person} key={player.name}><i>{index + 1}</i><span className={styles.avatar}>{player.name.slice(0, 2).toUpperCase()}</span><p><strong>{player.name}</strong><small>{player.score < 0 ? "负积分" : index === 0 ? "当前领先" : "积分账户"}</small></p><b className={player.score < 0 ? styles.negative : ""}>{player.score}<small>分</small></b><button className={styles.deletePerson} type="button" onClick={() => deletePlayer(player.name)} aria-label={`删除 ${player.name}`}>×</button></div>)}</div>
         </aside>
 
         <section className={styles.gameWorkspace}>
-          <div className={styles.panelHead}><div><span>02</span><h2>记录新牌局</h2></div><small>按名次排列参与者</small></div>
-          <div className={styles.sectionBlock}>
-            <div className={styles.blockTitle}><div><b>A</b><span><strong>选择本局人数</strong><small>人数决定名次分、复活费和淘汰分</small></span></div><em>淘汰基础分 {knockoutBase(playerCount)}</em></div>
-            <div className={styles.countPicker}>{Array.from({ length: 10 }, (_, index) => index + 3).map((count) => <button className={count === playerCount ? styles.selectedCount : ""} type="button" key={count} onClick={() => changeCount(count)}>{count}<small>人</small></button>)}</div>
+          <div className={styles.panelHead}><div><span>02</span><h2>本局设置</h2></div><small>决定所有自动分值</small></div>
+          <div className={styles.settingsGrid}>
+            <div><div className={styles.blockTitle}><span><strong>本局开始人数</strong><small>决定名次分与淘汰分</small></span><em>{paidPlaces} 个计分名次</em></div><div className={styles.countPicker}>{Array.from({ length: 10 }, (_, index) => index + 3).map((count) => <button className={count === playerCount ? styles.selectedCount : ""} type="button" key={count} onClick={() => changePlayerCount(count)}>{count}<small>人</small></button>)}</div></div>
+            <div><div className={styles.blockTitle}><span><strong>当前盲注等级</strong><small>决定本次复活花费</small></span><em>{unitReviveCost ? `单次 −${unitReviveCost} 分` : "不可复活"}</em></div><div className={styles.levelPicker}>{BLIND_LEVELS.map((blind) => <button className={blind.level === currentLevel ? styles.selectedLevel : ""} type="button" key={blind.level} onClick={() => setCurrentLevel(blind.level)}><b>L{blind.level}</b><span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span><small>{reviveCost(playerCount, blind.level) ? `复活 −${reviveCost(playerCount, blind.level)}` : "禁止复活"}</small></button>)}</div></div>
           </div>
-          <div className={styles.sectionBlock}>
-            <div className={styles.blockTitle}><div><b>B</b><span><strong>按最终名次填写</strong><small>第 1 行即第 1 名，系统实时预览净积分</small></span></div><em>前 {Math.ceil(playerCount / 2)} 名获得名次分</em></div>
-            <div className={styles.resultsHead}><span>名次 / 人员</span><span>复活等级（最多两次）</span><span>积分预览</span></div>
-            <div className={styles.resultRows}>{seats.map((seat, index) => { const preview = previews[index]; return <div className={styles.resultRow} key={index}>
-              <div className={styles.playerChoice}><i>{index + 1}</i><select aria-label={`第 ${index + 1} 名`} value={seat.playerId} onChange={(event) => setSeatPlayer(index, event.target.value)}><option value="">选择人员</option>{players.map((player) => <option disabled={selectedIds.includes(player.id) && seat.playerId !== player.id} value={player.id} key={player.id}>{player.name}</option>)}</select></div>
-              <div className={styles.revivalChoices}>{playerCount < 5 ? <span className={styles.noRevive}>本局不可复活</span> : [0, 1].map((revivalIndex) => <label key={revivalIndex}><small>第{revivalIndex + 1}次</small><select value={seat.revivals[revivalIndex] ?? 0} onChange={(event) => setRevival(index, revivalIndex, Number(event.target.value))}><option value="0">无</option>{BLIND_LEVELS.map((blind) => <option value={blind.level} key={blind.level}>L{blind.level} · −{reviveCost(playerCount, blind.level)}</option>)}</select></label>)}</div>
-              <div className={styles.previewScore}><strong className={preview.total < 0 ? styles.negative : styles.positive}>{signed(preview.total)}</strong><small>名次 {signed(preview.placement)} · 淘汰 {signed(preview.knockout)} · 复活 −{preview.revival}</small></div>
-            </div>; })}</div>
-          </div>
-          <div className={styles.sectionBlock}>
-            <div className={styles.blockTitle}><div><b>C</b><span><strong>记录淘汰</strong><small>每淘汰一个生命记一条；多人共同淘汰时向上取整</small></span></div><button className={styles.secondaryButton} type="button" onClick={addKnockout} disabled={!selectedIds.length}>＋ 添加淘汰</button></div>
-            {knockouts.length === 0 ? <div className={styles.knockoutEmpty}>没有淘汰奖励记录，可直接结算名次与复活积分。</div> : <div className={styles.knockoutList}>{knockouts.map((event, eventIndex) => { const validWinners = event.winnerPlayerIds.filter((id) => id !== event.victimPlayerId); const share = validWinners.length ? knockoutShare(playerCount, validWinners.length) : knockoutBase(playerCount); return <article className={styles.knockoutCard} key={event.id}>
-              <div className={styles.knockoutTop}><strong>淘汰记录 {eventIndex + 1}</strong><span>每位得分 {validWinners.length ? share : "—"}</span><button type="button" onClick={() => setKnockouts((current) => current.filter((item) => item.id !== event.id))}>删除</button></div>
-              <label className={styles.victimChoice}><span>被淘汰生命</span><select value={event.victimPlayerId} onChange={(change) => setKnockouts((current) => current.map((item) => item.id === event.id ? { ...item, victimPlayerId: change.target.value, winnerPlayerIds: item.winnerPlayerIds.filter((id) => id !== change.target.value) } : item))}><option value="">选择人员</option>{selectedIds.map((id) => <option value={id} key={id}>{playerById.get(id)?.name}</option>)}</select></label>
-              <div className={styles.winnerChoices}><span>得分玩家（可多选）</span><div>{selectedIds.filter((id) => id !== event.victimPlayerId).map((id) => <button className={event.winnerPlayerIds.includes(id) ? styles.winnerSelected : ""} type="button" key={id} onClick={() => toggleWinner(event.id, id)}>{playerById.get(id)?.name}<small>{event.winnerPlayerIds.includes(id) ? `＋${share}` : "选择"}</small></button>)}</div></div>
-            </article>; })}</div>}
-          </div>
-          <div className={styles.settleBar}><div><span>本局积分变化合计</span><strong>{signed(previews.reduce((sum, preview) => sum + preview.total, 0))}</strong><small>淘汰多人分摊向上取整可能产生少量额外积分</small></div><button type="button" onClick={saveGame} disabled={saving}>{saving ? "正在保存…" : "确认结算本局 →"}</button></div>
+
+          <section className={styles.placementPanel}>
+            <div className={styles.blockTitle}><span><strong>输入计分名次</strong><small>只显示有名次积分的前半数，最多6名</small></span><em>选择 {paidPlaces} 人</em></div>
+            <div className={styles.rankList}>{Array.from({ length: paidPlaces }, (_, index) => <label key={index}><i>{index + 1}</i><span><strong>第 {index + 1} 名</strong><small>＋{placementScore(playerCount, index + 1)} 分</small></span><select value={rankedPlayers[index] ?? ""} onChange={(event) => setRankedPlayers((current) => current.map((value, rank) => rank === index ? event.target.value : value))}><option value="">选择人员</option>{players.map((player) => <option disabled={selectedRanked.includes(player.name) && rankedPlayers[index] !== player.name} key={player.name}>{player.name}</option>)}</select></label>)}</div>
+            <button className={styles.settlePlacement} type="button" onClick={settlePlacement}>结算名次积分 →</button>
+          </section>
+
+          <section className={styles.quickActions}>
+            <button type="button" onClick={() => openModal("revive")} disabled={!players.length || !unitReviveCost}><span>↻</span><div><strong>复活扣分</strong><small>{unitReviveCost ? `当前每次扣 ${unitReviveCost} 分，次数不限` : "当前设置不可复活"}</small></div><b>打开 →</b></button>
+            <button type="button" onClick={() => openModal("knockout")} disabled={!players.length}><span>✦</span><div><strong>淘汰加分</strong><small>选择得分人员，系统按人数直接加分</small></div><b>打开 →</b></button>
+          </section>
         </section>
       </section>
 
-      <section className={styles.historySection}>
-        <div className={styles.historyHead}><div><p className={styles.eyebrow}>RECENT GAMES</p><h2>最近牌局</h2></div><span>显示最近 12 局</span></div>
-        {games.length === 0 ? <div className={styles.historyEmpty}>结算第一局后，这里会保留每位玩家的详细积分流水。</div> : <div className={styles.gameHistory}>{games.map((game, index) => <article key={game.id}><header><div><b>牌局 {games.length - index}</b><span>{game.playerCount} 人桌</span></div><time>{new Date(game.createdAt).toLocaleString("zh-CN", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}</time></header><div>{game.entries.map((entry) => <p key={entry.playerId}><i>{entry.rank}</i><strong>{entry.name}</strong><span>名次 {signed(entry.placementScore)}</span><span>淘汰 {signed(entry.knockoutScore)}</span><span>复活 −{entry.revivalCost}</span><b className={entry.totalDelta < 0 ? styles.negative : styles.positive}>{signed(entry.totalDelta)}</b></p>)}</div></article>)}</div>}
-      </section>
+      <footer className={styles.footer}><span>数据格式</span><code>{`[{ "name": "玩家", "score": 0 }]`}</code><p>数据仅保存在当前浏览器；更换设备前请导出 JSON 备份。</p></footer>
+
+      {modal && <div className={styles.modalBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && closeModal()}><section className={styles.modal} role="dialog" aria-modal="true" aria-labelledby="action-title">
+        <header><div><p className={styles.eyebrow}>{modal === "revive" ? "REVIVAL COST" : "KNOCKOUT BONUS"}</p><h2 id="action-title">{modal === "revive" ? "复活扣分" : "淘汰加分"}</h2></div><button type="button" onClick={closeModal}>×</button></header>
+        {modal === "revive" ? <div className={styles.modalBody}><div className={styles.actionSummary}><span>L{currentLevel} · {formatNumber(currentBlind.small)} / {formatNumber(currentBlind.big)}</span><strong>单次 −{unitReviveCost} 分</strong></div><label><span>复活人员</span><select value={actionPlayer} onChange={(event) => setActionPlayer(event.target.value)}><option value="">选择人员</option>{players.map((player) => <option key={player.name}>{player.name}</option>)}</select></label><label><span>复活次数（无上限）</span><input type="number" min="1" step="1" value={reviveQuantity} onChange={(event) => setReviveQuantity(Math.max(1, Math.floor(Number(event.target.value) || 1)))} /></label><div className={styles.actionTotal}><span>本次合计扣除</span><strong className={styles.negative}>−{unitReviveCost * reviveQuantity}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyRevive}>确认扣分</button></div> : <div className={styles.modalBody}><div className={styles.actionSummary}><span>{playerCount} 人局 · 淘汰基础分</span><strong>{knockoutUnit} 分</strong></div><p className={styles.modalHint}>选择一名或多名得分人员。多人共同淘汰时，每人获得基础分除以人数后向上取整的整数。</p><div className={styles.modalPeople}>{players.map((player) => <button className={knockoutWinners.includes(player.name) ? styles.modalPersonSelected : ""} type="button" key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{knockoutWinners.includes(player.name) ? `＋${knockoutShareValue}` : "选择"}</small></button>)}</div><div className={styles.actionTotal}><span>每位获得</span><strong>＋{knockoutWinners.length ? knockoutShareValue : 0}</strong></div><button className={styles.modalPrimary} type="button" onClick={applyKnockout}>确认加分</button></div>}
+      </section></div>}
     </main>
   );
 }
