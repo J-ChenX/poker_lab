@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { boardCategoryCatalogue, boardCombinationDistribution, cardParts, compareScores, estimateMultiway, evaluate, HAND_NAMES, monteCarloHope, MULTIWAY_MONTE_CARLO_SAMPLES, RANKS, simulateMultiway, SUITS, type ExactResult, type Score } from "./poker";
+import { boardCategoryCatalogue, boardCombinationDistribution, cardParts, compareScores, estimateConditionalMultiway, estimateMultiway, evaluate, HAND_NAMES, monteCarloConditionalMultiway, monteCarloHope, MULTIWAY_MONTE_CARLO_SAMPLES, RANKS, simulateMultiway, SUITS, type ExactResult, type Score } from "./poker";
 
 type PickerMode = "hole" | "board" | null;
 type CalculationPhase = "idle" | "estimating" | "simulating" | "done";
@@ -24,6 +24,8 @@ function Ring({ primary, players }: { primary: number; players: number }) {
 
 const scoreRank = (value: number) => RANKS[value - 2] ?? String(value);
 const compactRequirementLabel = (label: string) => label.replace(/\s/g, "");
+const displayHandName = (name: string) => name === "一对" ? "对子" : name;
+const displayCard = (card: string) => { const parts = cardParts(card); return `${parts.rank}${parts.symbol}`; };
 
 function madeHandRequirement(score: Score, cards: string[], holeCards: string[]) {
   const flushSuit = SUITS.find((suit) => cards.filter((card) => card.endsWith(suit.code)).length >= 5);
@@ -125,6 +127,10 @@ export default function Home() {
       setResult(estimate);
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
       if (controller.signal.aborted || calculationToken.current !== token) return;
+      const modelConditionalWin = estimateConditionalMultiway(selectedHole, selectedBoard, opponents);
+      setResult({ ...estimate, conditionalWin: modelConditionalWin });
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (controller.signal.aborted || calculationToken.current !== token) return;
       setPhase("simulating");
       const simulation = await simulateMultiway(
         selectedHole,
@@ -137,9 +143,12 @@ export default function Home() {
       if (controller.signal.aborted || calculationToken.current !== token) return;
       const { runouts, headsUp, categories, bestHand, ...table } = simulation;
       const hope = selectedBoard.length >= 3 && selectedBoard.length < 5
-        ? monteCarloHope(runouts, evaluate([...selectedHole, ...selectedBoard]))
+        ? monteCarloHope(runouts, evaluate([...selectedHole, ...selectedBoard]), [...selectedHole, ...selectedBoard])
         : undefined;
-      setResult({ ...estimate, ...headsUp, categories, bestHand, table, hope });
+      const conditionalWin = selectedBoard.length >= 3 && selectedBoard.length < 5
+        ? monteCarloConditionalMultiway(runouts, [...selectedHole, ...selectedBoard])
+        : undefined;
+      setResult({ ...estimate, ...headsUp, categories, bestHand, table, hope, conditionalWin });
     }
     catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError")) console.error(error);
@@ -171,14 +180,15 @@ export default function Home() {
       : decisionEquity >= 55 && equityEdge >= 10
         ? { label: "优先考虑加注", tone: "raise" }
         : { label: "可以跟注", tone: "call" };
+  const futureCards = Math.max(0, 5 - validBoard.length);
   const calculation = result?.table ?? result;
   const calculationMeta = !calculation ? null : calculation.method === "model_estimate"
-    ? running ? "即时数学模型估算（4,096 个确定性探针）· 后台蒙特卡洛正在校正" : "即时数学模型估算（4,096 个确定性探针）"
+    ? running ? "即时共享牌堆模型（4,096 个低差异样本）· 后台蒙特卡洛正在校正" : "即时共享牌堆模型（4,096 个低差异样本）"
     : calculation.method === "monte_carlo"
     ? `${calculation.samples!.toLocaleString()} 次无放回模拟 · 权益 95% 误差 ±${calculation.margin95!.toFixed(2)}%`
     : calculation.method === "preflop_monte_carlo"
       ? `${calculation.samples!.toLocaleString()} 次翻牌前模拟校准`
-      : `${calculation.samples.toLocaleString()} 种无放回精确结果`;
+      : `${calculation.samples?.toLocaleString() ?? "—"} 种无放回精确结果`;
 
   return (
     <main>
@@ -235,7 +245,24 @@ export default function Home() {
         {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.filter((section) => section.variants.length > 0 || madeHand?.category === section.category).map((section, index) => { const isMyHand = madeHand?.category === section.category; const variants = isMyHand ? section.variants.filter((variant) => compactRequirementLabel(variant.label) !== compactRequirementLabel(madeHand.label)) : section.variants; const items = [...variants.map((variant) => ({ type: "variant" as const, strength: variant.strength, variant })), ...(isMyHand ? [{ type: "hero" as const, strength: madeHand.strength }] : [])].sort((first, second) => compareScores(second.strength, first.strength)); return <article className="catalogue-row" key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{`${items.length} 种牌力`}</small></div><div className="variant-list">{items.map((item) => item.type === "hero" ? <div className="variant-chip hero-made-chip" key="hero-made-hand"><strong>{madeHand!.label}</strong><span>我的牌</span></div> : <div className={`variant-chip ${item.variant.suitCode === "h" || item.variant.suitCode === "d" ? "red" : ""}`} key={item.variant.key}><strong>{item.variant.label}</strong><span>{item.variant.comboCount} 组底牌</span></div>)}</div></article>; })}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 
-      {result?.hope && <section className="hope-card board-hope-section"><div className="hope-head"><div><p>剩余希望</p><h3>{result.hope.competitive.toFixed(1)}% <span>胜算过半牌面</span></h3></div><span>当前：{result.hope.currentHand === "一对" ? "对子" : result.hope.currentHand}</span></div><div className="hope-metrics"><div><span>成牌提升率</span><strong>{result.hope.improve.toFixed(1)}%</strong></div><div><span>提升后平均权益</span><strong>{result.hope.improvedEquity.toFixed(1)}%</strong></div><div><span>未提升平均权益</span><strong>{result.hope.blankEquity.toFixed(1)}%</strong></div></div><div className="hope-next"><span>最有利的下一张牌</span><div>{result.hope.nextCards.map(({ card, equity }) => { const parts = cardParts(card); return <div className={parts.code === "h" || parts.code === "d" ? "red" : ""} key={card}><b>{parts.rank}{parts.symbol}</b><small>{equity.toFixed(1)}% 权益</small></div>; })}</div></div><p className="hope-note">“成牌提升”只表示最终牌型变大，公共牌变化也会计入，并不等于获胜；真正的希望以胜算过半牌面为准，每个牌面均按当前 {result.opponents + 1} 人桌重新比较。</p></section>}
+      {result && validBoard.length >= 3 && <section className="turnaround-section" aria-label="转机与弃牌分析">
+        <div className="turnaround-head">
+          <div><p className="eyebrow">MULTIWAY WIN BUCKETS</p><span className={`turnaround-status ${futureCards ? "is-positive" : "is-caution"}`}>{futureCards ? !result.conditionalWin ? "正在建模" : result.conditionalWin.source === "monte_carlo" ? "蒙特卡洛精算值" : "数学模型即时值" : "最终牌面"}</span><h2>{futureCards ? "未来牌后的多人胜率区间" : "公共牌已发完，没有后续转机"}</h2><p>{futureCards ? <>每张未来公共牌都会按当前 <strong>{result.opponents + 1} 人桌</strong>重新建模；区域互斥显示 40–60%、60–80%、&gt;80%，顶部数量累计显示 &gt;40%、&gt;60%、&gt;80%。</> : <>当前最终牌型为 <strong>{displayHandName(HAND_NAMES[evaluate([...validHole, ...validBoard])[0]])}</strong>，行动只依据最终权益、底池赔率与 EV。</>}</p></div>
+          <div className={`turnaround-action ${equityEdge >= 0 || callAmount <= 0 ? "is-positive" : "is-negative"}`}><span>多人桌行动建议</span><strong>{decision?.label ?? "等待计算"}</strong><small>{decisionEquity.toFixed(1)}% 多人桌权益 / {potOdds.toFixed(1)}% 底池赔率</small></div>
+        </div>
+        {futureCards > 0 && !result.conditionalWin && <div className="tier-loading"><strong>正在生成多人胜率数学模型</strong><span>即时模型完成后先显示，再由 50 万次蒙特卡洛更新细节。</span></div>}
+        {futureCards > 0 && result.conditionalWin && <div className="percentile-grid">{result.conditionalWin.ranges.map((range) => <article className="percentile-tier" key={range.min}>
+          <div className="percentile-tier-head"><span>区域：{range.label}</span><strong>&gt;{range.min}%：{range.cumulativeOuts} 张</strong><small>{range.cumulativeOuts}/{result.conditionalWin!.availableCards} · {range.cumulativeProbability.toFixed(1)}%；最终牌面 &gt;{range.min}%：{range.cumulativeRunouts}/{result.conditionalWin!.totalRunouts}</small></div>
+          <div className={`tier-route-metrics ${result.conditionalWin.cardsRemaining === 1 ? "single" : ""}`}>
+            <div><span>下一张落在 {range.label}</span><strong>{(range.oneCardOuts.length / result.conditionalWin.availableCards * 100).toFixed(1)}%</strong><small>{range.oneCardOuts.length} / {result.conditionalWin.availableCards} 张</small></div>
+            {result.conditionalWin.cardsRemaining === 2 && <div><span>必须 2 张后落在本区间</span><strong>{range.twoCardProbability.toFixed(1)}%</strong><small>{range.twoCardCombos.length} / {result.conditionalWin.totalRunouts} 组组合</small></div>}
+          </div>
+          <div className="tier-outs"><span>{range.label} 的单张公共牌</span>{range.oneCardOuts.length ? <div className="out-card-list equity-out-list">{range.oneCardOuts.map(({ card, winRate }) => { const parts = cardParts(card); return <span className={parts.code === "h" || parts.code === "d" ? "red" : ""} key={card}><b>{displayCard(card)}</b><small>{winRate.toFixed(1)}%</small></span>; })}</div> : <small>没有单张公共牌落入 {range.label}</small>}</div>
+          {result.conditionalWin.cardsRemaining === 2 && <div className="tier-combos"><span>仅两张组合后落入 {range.label}</span>{range.twoCardCombos.length ? <div>{range.twoCardCombos.slice(0, 12).map(({ cards: [first, second], winRate }) => <b key={`${first}|${second}`}>{displayCard(first)} + {displayCard(second)} <small>{winRate.toFixed(1)}%</small></b>)}{range.twoCardCombos.length > 12 && <em>另有 {range.twoCardCombos.length - 12} 组</em>}</div> : <small>没有额外的两张组合</small>}</div>}
+        </article>)}</div>}
+        <div className="turnaround-decision"><strong>{callAmount <= 0 ? futureCards ? "无需付费看下一张：" : "最终牌面可过牌：" : equityEdge >= 0 ? "当前价格可行：" : "当前价格不可行："}</strong><span>{callAmount <= 0 ? futureCards ? "可以过牌观察，并按上方三个档位评估后续牌。" : "无需投入额外筹码，按最终牌力决定是否价值下注。" : equityEdge >= 0 ? `权益高于底池赔率 ${Math.abs(equityEdge).toFixed(1)} 个百分点，跟注 EV 为 +${callEv.toFixed(1)}。` : futureCards ? `权益低于底池赔率 ${Math.abs(equityEdge).toFixed(1)} 个百分点，跟注 EV 为 ${callEv.toFixed(1)}；即使存在达标牌，也不值得按当前价格追牌。` : `最终权益低于底池赔率 ${Math.abs(equityEdge).toFixed(1)} 个百分点，跟注 EV 为 ${callEv.toFixed(1)}，不建议跟注。`}</span></div>
+        <p className="turnaround-note">{futureCards ? "数学模型先精确枚举固定牌面的全部单个对手底牌；两名对手使用不相交组合精确计算，更多对手使用 4,096 个低差异共享牌堆样本。随后 50 万次共享牌堆蒙特卡洛按同一分区替换细节。平局不计为胜。剩 1 张时分母为 46；剩 2 张时，下一张分母为 47，最终牌面以 C(47,2)=1,081 组组合汇总。" : "公共牌已经发完，不再计算未来牌或转机概率。"} 结果未包含对手范围、位置与后续下注。</p>
+      </section>}
 
       {pickerMode && <div className="picker-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setPickerMode(null); }}>
         <section className="picker" role="dialog" aria-modal="true" aria-labelledby="picker-title">

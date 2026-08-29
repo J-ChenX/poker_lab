@@ -1,0 +1,1 @@
+CREATE INDEX `idx_score_entries_game_id` ON `score_entries` (`game_id`);

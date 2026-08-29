@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { boardCategoryCatalogue, enumerateExact, estimateMultiway, exactMultiwayDealCount, simulateMultiway } from "../app/poker";
+import { boardCategoryCatalogue, enumerateExact, estimateConditionalMultiway, estimateMultiway, evaluate, exactMultiwayDealCount, monteCarloConditionalMultiway, monteCarloHope, simulateMultiway } from "../app/poker";
 import { PREFLOP_MULTIWAY } from "../app/preflop-calibration.generated";
 import { preflopResult } from "../app/preflop";
 
@@ -45,6 +45,7 @@ test("keeps every preflop calibration curve valid and monotone", () => {
 test("deals reproducible shared-deck Monte Carlo samples", async () => {
   const first = await simulateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4, 20_000);
   const second = await simulateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4, 20_000);
+  const model = estimateMultiway(["Ac", "3c"], ["5d", "4h", "2s", "Jc"], 4);
   assert.equal(first.method, "monte_carlo");
   assert.equal(first.samples, 20_000);
   assert.equal(first.winHands + first.tieHands + first.loseHands, first.samples);
@@ -54,6 +55,7 @@ test("deals reproducible shared-deck Monte Carlo samples", async () => {
   assert.equal(first.tie, second.tie);
   assert.equal(first.equity, second.equity);
   assert.ok(first.margin95 > 0 && first.margin95 < 1);
+  assert.ok(Math.abs(model.table!.win - first.win) < 2);
 });
 
 test("returns an immediate mathematical estimate before simulation", () => {
@@ -89,8 +91,62 @@ test("hope model exposes weak five-player outlook instead of treating any catego
   assert.ok(result.hope.competitive < 5);
   assert.ok(result.hope.improvedEquity < 25);
   assert.ok(result.hope.blankEquity < 1);
+  assert.equal(result.hope.cardsRemaining, 2);
+  assert.ok(Math.abs(result.hope.oneCardImprove + result.hope.twoCardImprove - result.hope.improve) < 1e-9);
   assert.equal(result.hope.nextCards.length, 6);
   assert.ok(result.hope.nextCards.every(({ equity }, index, cards) => index === 0 || cards[index - 1].equity >= equity));
+});
+
+test("hope model separates one-card outs from two-card backdoor routes", () => {
+  const cards = ["Ah", "Kh", "2h", "7c", "9d"];
+  const hope = monteCarloHope(new Map([
+    ["3h|4h", { cards: ["3h", "4h"], category: 5, equity: .7, samples: 1 }],
+    ["As|4c", { cards: ["As", "4c"], category: 1, equity: .6, samples: 1 }],
+  ]), evaluate(cards), cards);
+  assert.equal(hope.cardsRemaining, 2);
+  assert.equal(hope.oneCardImprove, 50);
+  assert.equal(hope.twoCardImprove, 50);
+  assert.ok(hope.immediateOuts.includes("As"));
+  assert.ok(!hope.immediateOuts.includes("3h"));
+});
+
+test("keeps 40-60, 60-80 and over-80 cards exclusive while counts stay cumulative", () => {
+  const analysis = monteCarloConditionalMultiway(new Map([
+    ["2s", { cards: ["2s"], wins: 50, samples: 100 }],
+    ["3s", { cards: ["3s"], wins: 70, samples: 100 }],
+    ["4s", { cards: ["4s"], wins: 90, samples: 100 }],
+    ["5s", { cards: ["5s"], wins: 30, samples: 100 }],
+  ]), ["Ah", "Kd", "2c", "7h", "9s", "Jd"])!;
+  assert.deepEqual(analysis.ranges.map(({ oneCardOuts }) => oneCardOuts.map(({ card }) => card)), [["2s"], ["3s"], ["4s"]]);
+  assert.deepEqual(analysis.ranges.map(({ cumulativeOuts }) => cumulativeOuts), [3, 2, 1]);
+});
+
+test("produces an immediate deterministic multiway conditional model", () => {
+  const analysis = estimateConditionalMultiway(["Ah", "Kd"], ["2c", "7h", "9s", "Jd"], 4)!;
+  assert.equal(analysis.source, "model");
+  assert.equal(analysis.availableCards, 46);
+  assert.equal(analysis.totalRunouts, 46);
+  assert.deepEqual(analysis.ranges.map(({ label }) => label), ["40–60%", "60–80%", ">80%"]);
+});
+
+test("uses exact disjoint opponent combinations for a fixed three-player river", async () => {
+  const hero = ["As", "Kh"];
+  const turn = ["10s", "9s", "8s", "6h"];
+  const analysis = estimateConditionalMultiway(hero, turn, 2)!;
+  const candidate = analysis.ranges.flatMap(({ oneCardOuts }) => oneCardOuts)[0];
+  assert.ok(candidate);
+  const exact = await enumerateExact(hero, [...turn, candidate.card], 2);
+  assert.ok(Math.abs(candidate.winRate - exact.table!.win) < 1e-9);
+});
+
+test("weights conditional Monte Carlo cards by their actual sample counts", () => {
+  const analysis = monteCarloConditionalMultiway(new Map([
+    ["2s|3s", { cards: ["2s", "3s"], wins: 1, samples: 1 }],
+    ["2s|4s", { cards: ["2s", "4s"], wins: 4, samples: 9 }],
+  ]), ["Ah", "Kd", "2c", "7h", "9s"])!;
+  const twoOfSpades = analysis.ranges[0].oneCardOuts.find(({ card }) => card === "2s");
+  assert.ok(twoOfSpades);
+  assert.equal(twoOfSpades.winRate, 50);
 });
 
 test("hope is only shown while future community cards remain", async () => {

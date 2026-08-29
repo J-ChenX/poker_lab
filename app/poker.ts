@@ -35,14 +35,40 @@ export type ExactResult = {
   bestHand: string;
   opponents: number;
   method: "exact" | "exact_multiway" | "model_estimate" | "preflop";
+  conditionalWin?: ConditionalWinAnalysis;
   hope?: {
     currentHand: string;
+    cardsRemaining: number;
+    availableCards: number;
+    totalRunouts: number;
     improve: number;
+    oneCardImprove: number;
+    twoCardImprove: number;
     competitive: number;
     improvedEquity: number;
     blankEquity: number;
+    immediateOuts: string[];
     nextCards: Array<{ card: string; equity: number }>;
   };
+};
+export type ConditionalWinRange = {
+  min: 40 | 60 | 80;
+  max?: 60 | 80;
+  label: string;
+  cumulativeOuts: number;
+  cumulativeProbability: number;
+  cumulativeRunouts: number;
+  cumulativeRunoutProbability: number;
+  oneCardOuts: Array<{ card: string; winRate: number }>;
+  twoCardCombos: Array<{ cards: [string, string]; winRate: number }>;
+  twoCardProbability: number;
+};
+export type ConditionalWinAnalysis = {
+  source: "model" | "monte_carlo";
+  cardsRemaining: 1 | 2;
+  availableCards: number;
+  totalRunouts: number;
+  ranges: ConditionalWinRange[];
 };
 export type BoardVariant = {
   key: string;
@@ -147,6 +173,7 @@ export function boardCombinationDistribution(hero: string[], board: string[]) {
   return { categories, bestHand: HAND_NAMES[topCategory], samples, drawCount };
 }
 
+
 function chooseBigInt(total: number, size: number) {
   if (size < 0 || size > total) return 0n;
   const selected = Math.min(size, total - size);
@@ -179,6 +206,7 @@ function twoEdgeMatchings(edges: number, degrees: number[]) {
 
 export const MULTIWAY_MONTE_CARLO_SAMPLES = 500_000;
 export const QUICK_ESTIMATE_SAMPLES = 4_096;
+const HALTON_BASES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73];
 
 function scenarioSeed(hero: string[], board: string[], opponents: number) {
   let hash = 0x811c9dc5;
@@ -199,24 +227,31 @@ function seededRandom(seed: number) {
   };
 }
 
-function averageTieShare(winOne: number, tieOne: number, opponents: number) {
-  const unbeaten = winOne + tieOne;
-  if (tieOne <= 0 || unbeaten <= 0) return .5;
-  const tieChance = tieOne / unbeaten;
-  const noTie = (1 - tieChance) ** opponents;
-  let share = 0;
-  let combinations = 1;
-  for (let ties = 1; ties <= opponents; ties++) {
-    combinations = combinations * (opponents - ties + 1) / ties;
-    share += combinations * tieChance ** ties * (1 - tieChance) ** (opponents - ties) / (ties + 1);
+function radicalInverse(index: number, base: number) {
+  let value = 0;
+  let denominator = base;
+  while (index > 0) {
+    value += (index % base) / denominator;
+    index = Math.floor(index / base);
+    denominator *= base;
   }
-  return noTie < 1 ? share / (1 - noTie) : .5;
+  return value;
+}
+
+function haltonShifts(seed: number, dimensions: number) {
+  const random = seededRandom(seed);
+  return Array.from({ length: dimensions }, () => random());
+}
+
+function haltonValue(sample: number, dimension: number, shifts: number[]) {
+  return (radicalInverse(sample + 1, HALTON_BASES[dimension]) + shifts[dimension]) % 1;
 }
 
 /**
- * Fast first-pass model: probe a small deterministic set of legal heads-up
- * deals, then project its win/tie rates to N opponents with an independence
- * model. It is deliberately replaced by the shared-deck simulation below.
+ * Fast first-pass model using a shifted Halton low-discrepancy sequence. Every
+ * sample deals the future board and every opponent from one shared deck, so it
+ * keeps card removal and opponent dependence instead of raising heads-up odds
+ * to a power. The larger pseudo-random simulation below still replaces it.
  */
 export function estimateMultiway(
   hero: string[],
@@ -229,27 +264,39 @@ export function estimateMultiway(
   const used = new Set([...hero, ...board]);
   const deck = DECK.filter((card) => !used.has(card));
   const missingBoard = 5 - board.length;
-  const drawCount = missingBoard + 2;
+  const drawCount = missingBoard + opponents * 2;
   const totalSamples = Math.max(256, Math.floor(samples));
-  const random = seededRandom(scenarioSeed(hero, board, opponents) ^ 0xa511e9b3);
-  const outcomes = { win: 0, tie: 0, lose: 0, equity: 0 };
+  const shifts = haltonShifts(scenarioSeed(hero, board, opponents) ^ 0xa511e9b3, drawCount);
+  const headsUp = { win: 0, tie: 0, lose: 0, equity: 0 };
+  const table = { win: 0, tie: 0, lose: 0, equity: 0 };
   const categories = Array(9).fill(0) as number[];
 
   for (let sample = 0; sample < totalSamples; sample++) {
     const swaps: number[] = [];
     for (let index = 0; index < drawCount; index++) {
-      const target = index + Math.floor(random() * (deck.length - index));
+      const target = index + Math.floor(haltonValue(sample, index, shifts) * (deck.length - index));
       swaps.push(target);
       [deck[index], deck[target]] = [deck[target], deck[index]];
     }
     const finalBoard = [...board, ...deck.slice(0, missingBoard)];
     const heroScore = evaluate([...hero, ...finalBoard]);
-    const opponentScore = evaluate([deck[missingBoard], deck[missingBoard + 1], ...finalBoard]);
-    const comparison = compareScores(heroScore, opponentScore);
     categories[heroScore[0]]++;
-    if (comparison > 0) { outcomes.win++; outcomes.equity++; }
-    else if (comparison === 0) { outcomes.tie++; outcomes.equity += .5; }
-    else outcomes.lose++;
+    let beaten = false;
+    let tiedOpponents = 0;
+    for (let opponent = 0; opponent < opponents; opponent++) {
+      const start = missingBoard + opponent * 2;
+      const comparison = compareScores(heroScore, evaluate([deck[start], deck[start + 1], ...finalBoard]));
+      if (opponent === 0) {
+        if (comparison > 0) { headsUp.win++; headsUp.equity++; }
+        else if (comparison === 0) { headsUp.tie++; headsUp.equity += .5; }
+        else headsUp.lose++;
+      }
+      if (comparison < 0) beaten = true;
+      else if (comparison === 0) tiedOpponents++;
+    }
+    if (beaten) table.lose++;
+    else if (tiedOpponents) { table.tie++; table.equity += 1 / (tiedOpponents + 1); }
+    else { table.win++; table.equity++; }
     for (let index = drawCount - 1; index >= 0; index--) {
       const target = swaps[index];
       [deck[index], deck[target]] = [deck[target], deck[index]];
@@ -257,34 +304,177 @@ export function estimateMultiway(
   }
 
   const percent = (value: number) => value / totalSamples * 100;
-  const winOne = outcomes.win / totalSamples;
-  const tieOne = outcomes.tie / totalSamples;
-  const winAll = winOne ** opponents;
-  const unbeatenAll = (winOne + tieOne) ** opponents;
-  const tieAll = Math.max(0, unbeatenAll - winAll);
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
   return {
-    win: percent(outcomes.win),
-    tie: percent(outcomes.tie),
-    lose: percent(outcomes.lose),
-    equity: percent(outcomes.equity),
-    winHands: outcomes.win,
-    tieHands: outcomes.tie,
-    loseHands: outcomes.lose,
+    win: percent(headsUp.win),
+    tie: percent(headsUp.tie),
+    lose: percent(headsUp.lose),
+    equity: percent(headsUp.equity),
+    winHands: headsUp.win,
+    tieHands: headsUp.tie,
+    loseHands: headsUp.lose,
     samples: totalSamples,
     categories: categories.map(percent),
     bestHand: HAND_NAMES[topCategory],
     opponents,
     method: "model_estimate",
     table: {
-      win: winAll * 100,
-      tie: tieAll * 100,
-      lose: (1 - unbeatenAll) * 100,
-      equity: (winAll + tieAll * averageTieShare(winOne, tieOne, opponents)) * 100,
+      win: percent(table.win),
+      tie: percent(table.tie),
+      lose: percent(table.lose),
+      equity: percent(table.equity),
       samples: totalSamples,
       method: "model_estimate",
     },
   };
+}
+
+const CONDITIONAL_MODEL_SAMPLES = 4_096;
+const CONDITIONAL_RANGES = [
+  { min: 40 as const, max: 60 as const, label: "40–60%" },
+  { min: 60 as const, max: 80 as const, label: "60–80%" },
+  { min: 80 as const, label: ">80%" },
+] as const;
+
+function buildConditionalWinAnalysis(
+  source: ConditionalWinAnalysis["source"],
+  cardsRemaining: 1 | 2,
+  availableCards: number,
+  singleRates: Array<{ card: string; winRate: number }>,
+  runoutRates: Array<{ cards: string[]; winRate: number }>,
+): ConditionalWinAnalysis {
+  const totalRunouts = runoutRates.length;
+  const ranges = CONDITIONAL_RANGES.map(({ min, ...range }) => {
+    const inRange = (winRate: number) => winRate > min && (range.max === undefined || winRate <= range.max);
+    const cumulativeCards = singleRates.filter(({ winRate }) => winRate > min);
+    const cumulativeCardSet = new Set(cumulativeCards.map(({ card }) => card));
+    const cumulativeRunouts = runoutRates.filter(({ winRate }) => winRate > min).length;
+    const oneCardOuts = singleRates.filter(({ winRate }) => inRange(winRate));
+    const twoCardCombos = runoutRates
+      .filter(({ cards, winRate }) => cards.length === 2 && inRange(winRate) && !cards.some((card) => cumulativeCardSet.has(card)))
+      .map(({ cards, winRate }) => ({ cards: [cards[0], cards[1]] as [string, string], winRate }))
+      .sort((first, second) => second.winRate - first.winRate || DECK.indexOf(first.cards[0]) - DECK.indexOf(second.cards[0]));
+    return {
+      min,
+      ...range,
+      cumulativeOuts: cumulativeCards.length,
+      cumulativeProbability: cumulativeCards.length / availableCards * 100,
+      cumulativeRunouts,
+      cumulativeRunoutProbability: totalRunouts ? cumulativeRunouts / totalRunouts * 100 : 0,
+      oneCardOuts,
+      twoCardCombos,
+      twoCardProbability: totalRunouts ? twoCardCombos.length / totalRunouts * 100 : 0,
+    };
+  });
+  return { source, cardsRemaining, availableCards, totalRunouts, ranges };
+}
+
+function fixedBoardMultiwayWinRate(hero: string[], board: string[], opponents: number, samples: number) {
+  const used = new Set([...hero, ...board]);
+  const deck = DECK.filter((card) => !used.has(card));
+  const heroScore = evaluate([...hero, ...board]);
+  const outcomes = new Uint8Array(deck.length * deck.length);
+  let winningEdges = 0;
+  const winningDegrees = Array(deck.length).fill(0) as number[];
+  for (let first = 0; first < deck.length - 1; first++) {
+    for (let second = first + 1; second < deck.length; second++) {
+      const heroWins = compareScores(heroScore, evaluate([deck[first], deck[second], ...board])) > 0;
+      outcomes[first * deck.length + second] = heroWins ? 1 : 0;
+      if (heroWins) {
+        winningEdges++;
+        winningDegrees[first]++;
+        winningDegrees[second]++;
+      }
+    }
+  }
+  if (opponents === 1) return winningEdges / chooseTwo(deck.length) * 100;
+  if (opponents === 2) {
+    return twoEdgeMatchings(winningEdges, winningDegrees) / Number(matchingCount(deck.length, 2)) * 100;
+  }
+
+  const drawCount = opponents * 2;
+  const shifts = haltonShifts(scenarioSeed(hero, board, opponents) ^ 0x68bc21eb, drawCount);
+  let wins = 0;
+  const indices = Array.from({ length: deck.length }, (_, index) => index);
+  for (let sample = 0; sample < samples; sample++) {
+    const swaps: number[] = [];
+    for (let index = 0; index < drawCount; index++) {
+      const target = index + Math.floor(haltonValue(sample, index, shifts) * (indices.length - index));
+      swaps.push(target);
+      [indices[index], indices[target]] = [indices[target], indices[index]];
+    }
+    let heroBeatsAll = true;
+    for (let opponent = 0; opponent < opponents; opponent++) {
+      const first = indices[opponent * 2];
+      const second = indices[opponent * 2 + 1];
+      const low = Math.min(first, second);
+      const high = Math.max(first, second);
+      if (!outcomes[low * deck.length + high]) { heroBeatsAll = false; break; }
+    }
+    if (heroBeatsAll) wins++;
+    for (let index = drawCount - 1; index >= 0; index--) {
+      const target = swaps[index];
+      [indices[index], indices[target]] = [indices[target], indices[index]];
+    }
+  }
+  return wins / samples * 100;
+}
+
+/** Fast deterministic conditional model shown before the shared-deck simulation finishes. */
+export function estimateConditionalMultiway(hero: string[], board: string[], opponents: number): ConditionalWinAnalysis | undefined {
+  if (hero.length !== 2 || (board.length !== 3 && board.length !== 4)) return undefined;
+  const cardsRemaining = (5 - board.length) as 1 | 2;
+  const used = new Set([...hero, ...board]);
+  const available = DECK.filter((card) => !used.has(card));
+  const runoutRates: Array<{ cards: string[]; winRate: number }> = [];
+  if (cardsRemaining === 1) {
+    for (const card of available) {
+      runoutRates.push({ cards: [card], winRate: fixedBoardMultiwayWinRate(hero, [...board, card], opponents, CONDITIONAL_MODEL_SAMPLES) });
+    }
+  } else {
+    for (let first = 0; first < available.length - 1; first++) {
+      for (let second = first + 1; second < available.length; second++) {
+        const cards = [available[first], available[second]];
+        runoutRates.push({ cards, winRate: fixedBoardMultiwayWinRate(hero, [...board, ...cards], opponents, CONDITIONAL_MODEL_SAMPLES) });
+      }
+    }
+  }
+  const nextCards = new Map<string, { total: number; count: number }>();
+  for (const runout of runoutRates) {
+    for (const card of runout.cards) {
+      const total = nextCards.get(card) ?? { total: 0, count: 0 };
+      total.total += runout.winRate;
+      total.count++;
+      nextCards.set(card, total);
+    }
+  }
+  const singleRates = [...nextCards.entries()]
+    .map(([card, value]) => ({ card, winRate: value.total / value.count }))
+    .sort((first, second) => second.winRate - first.winRate || DECK.indexOf(second.card) - DECK.indexOf(first.card));
+  return buildConditionalWinAnalysis("model", cardsRemaining, available.length, singleRates, runoutRates);
+}
+
+/** Rebuilds the same buckets from conditional multiway wins observed in Monte Carlo. */
+export function monteCarloConditionalMultiway(
+  runouts: Map<string, { cards: string[]; wins: number; samples: number }>,
+  currentCards: string[],
+): ConditionalWinAnalysis | undefined {
+  const summaries = [...runouts.values()].map(({ cards, wins, samples }) => ({ cards, wins, samples, winRate: wins / samples * 100 }));
+  const cardsRemaining = summaries[0]?.cards.length as 1 | 2 | undefined;
+  if (!cardsRemaining) return undefined;
+  const nextCards = new Map<string, { wins: number; samples: number }>();
+  for (const runout of summaries) {
+    for (const card of runout.cards) {
+      const total = nextCards.get(card) ?? { wins: 0, samples: 0 };
+      total.wins += runout.wins;
+      total.samples += runout.samples;
+      nextCards.set(card, total);
+    }
+  }
+  const singleRates = [...nextCards.entries()]
+    .map(([card, value]) => ({ card, winRate: value.wins / value.samples * 100 }))
+    .sort((first, second) => second.winRate - first.winRate || DECK.indexOf(second.card) - DECK.indexOf(first.card));
+  return buildConditionalWinAnalysis("monte_carlo", cardsRemaining, DECK.length - currentCards.length, singleRates, summaries);
 }
 
 /**
@@ -314,7 +504,7 @@ export async function simulateMultiway(
   const headsUp = { win: 0, tie: 0, lose: 0, equity: 0 };
   const categories = Array(9).fill(0) as number[];
   const heroScores = new Map<string, Score>();
-  const runouts = new Map<string, { cards: string[]; category: number; equity: number; samples: number }>();
+  const runouts = new Map<string, { cards: string[]; category: number; equity: number; wins: number; samples: number }>();
 
   for (let sample = 0; sample < totalSamples; sample++) {
     if (sample % 256 === 0 && signal?.aborted) throw new DOMException("计算已取消", "AbortError");
@@ -355,8 +545,9 @@ export async function simulateMultiway(
     else headsUp.lose++;
     categories[heroScore[0]]++;
     if (board.length >= 3) {
-      const runoutTotal = runouts.get(boardKey) ?? { cards: runout, category: heroScore[0], equity: 0, samples: 0 };
+      const runoutTotal = runouts.get(boardKey) ?? { cards: runout, category: heroScore[0], equity: 0, wins: 0, samples: 0 };
       runoutTotal.equity += share;
+      if (!beaten && tiedOpponents === 0) runoutTotal.wins++;
       runoutTotal.samples++;
       runouts.set(boardKey, runoutTotal);
     }
@@ -401,6 +592,7 @@ export async function simulateMultiway(
 export function monteCarloHope(
   runouts: Map<string, { cards: string[]; category: number; equity: number; samples: number }>,
   currentScore: Score,
+  currentCards: string[],
 ) {
   const summaries = [...runouts.values()].map((runout) => ({
     ...runout,
@@ -408,6 +600,11 @@ export function monteCarloHope(
   }));
   const improved = summaries.filter((runout) => runout.category > currentScore[0]);
   const blank = summaries.filter((runout) => runout.category <= currentScore[0]);
+  const used = new Set(currentCards);
+  const immediateOuts = DECK.filter((card) => !used.has(card) && evaluate([...currentCards, card])[0] > currentScore[0]);
+  const immediateOutSet = new Set(immediateOuts);
+  const oneCardImproved = improved.filter((runout) => runout.cards.some((card) => immediateOutSet.has(card)));
+  const twoCardImproved = improved.filter((runout) => runout.cards.length > 1 && !runout.cards.some((card) => immediateOutSet.has(card)));
   const nextCards = new Map<string, { total: number; count: number }>();
   for (const runout of summaries) {
     for (const card of runout.cards) {
@@ -420,16 +617,22 @@ export function monteCarloHope(
   const average = (values: typeof summaries) => values.length
     ? values.reduce((sum, runout) => sum + runout.equityPercent, 0) / values.length
     : 0;
+  const nextCardEquities = [...nextCards.entries()]
+    .map(([card, value]) => ({ card, equity: value.total / value.count }))
+    .sort((first, second) => second.equity - first.equity || DECK.indexOf(second.card) - DECK.indexOf(first.card));
   return {
     currentHand: HAND_NAMES[currentScore[0]],
+    cardsRemaining: summaries[0]?.cards.length ?? 0,
+    availableCards: DECK.length - currentCards.length,
+    totalRunouts: summaries.length,
     improve: improved.length / summaries.length * 100,
+    oneCardImprove: oneCardImproved.length / summaries.length * 100,
+    twoCardImprove: twoCardImproved.length / summaries.length * 100,
     competitive: summaries.filter((runout) => runout.equityPercent >= 50).length / summaries.length * 100,
     improvedEquity: average(improved),
     blankEquity: average(blank),
-    nextCards: [...nextCards.entries()]
-      .map(([card, value]) => ({ card, equity: value.total / value.count }))
-      .sort((first, second) => second.equity - first.equity || DECK.indexOf(second.card) - DECK.indexOf(first.card))
-      .slice(0, 6),
+    immediateOuts,
+    nextCards: nextCardEquities.slice(0, 6),
   };
 }
 
@@ -448,8 +651,7 @@ export async function enumerateExact(
   const categories = Array(9).fill(0) as number[];
   const exactTwo = { wins: 0, ties: 0, losses: 0, equity: 0, samples: 0 };
   const currentScore = evaluate([...hero, ...board]);
-  const hopeTotals = { improved: 0, competitive: 0, improvedEquity: 0, blankEquity: 0 };
-  const nextCardEquities = new Map<string, { total: number; count: number }>();
+  const exactRunouts = new Map<string, { cards: string[]; category: number; equity: number; samples: number }>();
   let equity = 0;
 
   for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
@@ -506,18 +708,7 @@ export async function enumerateExact(
 
     }
     if (missing > 0) {
-      const improved = heroScore[0] > currentScore[0];
-      if (improved) {
-        hopeTotals.improved++;
-        hopeTotals.improvedEquity += runoutEquity;
-      } else hopeTotals.blankEquity += runoutEquity;
-      if (runoutEquity >= 50) hopeTotals.competitive++;
-      for (const card of runout) {
-        const total = nextCardEquities.get(card) ?? { total: 0, count: 0 };
-        total.total += runoutEquity;
-        total.count++;
-        nextCardEquities.set(card, total);
-      }
+      exactRunouts.set([...runout].sort().join("|"), { cards: runout, category: heroScore[0], equity: runoutEquity, samples: 1 });
     }
     if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
       onProgress?.((runoutIndex + 1) / runouts.length * (opponents > 2 ? .5 : 1));
@@ -528,19 +719,7 @@ export async function enumerateExact(
   const samples = outcomes[0] + outcomes[1] + outcomes[2];
   const percent = (value: number) => value / samples * 100;
   const topCategory = categories.reduce((best, count, index) => count > categories[best] ? index : best, 0);
-  const improvedCount = hopeTotals.improved;
-  const blankCount = runouts.length - improvedCount;
-  const hope = missing > 0 ? {
-    currentHand: HAND_NAMES[currentScore[0]],
-    improve: improvedCount / runouts.length * 100,
-    competitive: hopeTotals.competitive / runouts.length * 100,
-    improvedEquity: improvedCount ? hopeTotals.improvedEquity / improvedCount : 0,
-    blankEquity: blankCount ? hopeTotals.blankEquity / blankCount : 0,
-    nextCards: [...nextCardEquities.entries()]
-      .map(([card, value]) => ({ card, equity: value.total / value.count }))
-      .sort((first, second) => second.equity - first.equity || DECK.indexOf(second.card) - DECK.indexOf(first.card))
-      .slice(0, 6),
-  } : undefined;
+  const hope = missing > 0 ? monteCarloHope(exactRunouts, currentScore, [...hero, ...board]) : undefined;
   const base = {
     win: percent(outcomes[0]), tie: percent(outcomes[1]), lose: percent(outcomes[2]), equity: percent(equity), samples,
     winHands: outcomes[0], tieHands: outcomes[1], loseHands: outcomes[2],
@@ -562,7 +741,7 @@ export async function enumerateExact(
     samples: simulation.samples, winHands: simulation.winHands, tieHands: simulation.tieHands, loseHands: simulation.loseHands,
     margin95: simulation.margin95, seed: simulation.seed, method: simulation.method,
   };
-  const simulatedHope = missing > 0 ? monteCarloHope(simulatedRunouts, currentScore) : undefined;
+  const simulatedHope = missing > 0 ? monteCarloHope(simulatedRunouts, currentScore, [...hero, ...board]) : undefined;
   return { ...base, hope: simulatedHope, table, opponents, method: "exact" };
 }
 

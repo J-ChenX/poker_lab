@@ -128,28 +128,6 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .odds-preview { background:#e8eee9; padding:9px 12px; }
 .odds-preview>span { margin-bottom:3px; }.odds-preview strong { color:var(--green); font-size:18px; }
 .decision-card { margin-top:22px; border:1px solid #39443e; padding:16px; }
-.hope-card { margin-top:18px; padding:16px; border:1px solid #466152; background:linear-gradient(145deg,#142119,#101713); }
-.board-hope-section { margin:-55px 5vw 85px; padding:26px; color:white; }
-.board-hope-section .hope-head h3 { font-size:32px; }
-.board-hope-section .hope-next>div { grid-template-columns:repeat(6,1fr); }
-.hope-head { display:flex; justify-content:space-between; align-items:flex-start; gap:14px; }
-.hope-head p,.hope-note { margin:0; color:#8d9891; font-size:8px; line-height:1.6; }
-.hope-head h3 { margin:4px 0 0; color:var(--lime); font:400 24px Georgia,"Microsoft YaHei",serif; }
-.hope-head h3 span { color:#f3f4f0; font:400 10px var(--sans); }
-.hope-head>span { padding:5px 7px; border:1px solid #394a41; color:#9ca79f; font-size:8px; }
-.hope-metrics { display:grid; grid-template-columns:repeat(3,1fr); margin-top:14px; border:1px solid #303c35; }
-.hope-metrics>div { padding:10px; border-right:1px solid #303c35; }
-.hope-metrics>div:last-child { border-right:0; }
-.hope-metrics span { display:block; color:#7d8982; font-size:7px; line-height:1.4; }
-.hope-metrics strong { display:block; margin-top:5px; font-size:12px; }
-.hope-next { margin-top:14px; }
-.hope-next>span { color:#9ca79f; font-size:8px; }
-.hope-next>div { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:7px; }
-.hope-next>div>div { padding:7px 8px; border:1px solid #303c35; background:#0f1512; }
-.hope-next b,.hope-next small { display:block; }
-.hope-next b { color:#f4f5f1; font-size:10px; }.hope-next .red b { color:#ef6657; }
-.hope-next small { margin-top:3px; color:#707b74; font-size:7px; }
-.hope-note { padding-top:11px; margin-top:12px; border-top:1px solid #303c35; }
 .decision-card>div:first-child { display:flex; align-items:center; justify-content:space-between; gap:14px; }
 .decision-card p { margin:0; color:#89938d; font-size:8px; line-height:1.6; }
 .decision-card h3 { margin:0; font:400 17px Georgia,"Microsoft YaHei",serif; }
@@ -164,8 +142,6 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .preflop-note p { margin:0; color:#838c86; font-size:8px; line-height:1.6; }
 @media(max-width:760px){.funding-panel{grid-template-columns:1fr 1fr}.odds-preview{grid-column:1/-1}.funding-head{grid-column:1/-1}}
 @media(max-width:520px){.funding-panel{padding:0 23px 25px}.funding-head>span{display:none}.decision-metrics{grid-template-columns:1fr 1fr 1fr}}
-@media(max-width:760px){.board-hope-section{margin:-55px 20px 70px;padding:22px}.board-hope-section .hope-next>div{grid-template-columns:repeat(3,1fr)}}
-@media(max-width:520px){.board-hope-section{margin-left:12px;margin-right:12px}.hope-metrics{grid-template-columns:1fr}.hope-metrics>div{border-right:0;border-bottom:1px solid #303c35}.hope-metrics>div:last-child{border-bottom:0}}
 .catalogue-section { grid-template-columns:.62fr 1.38fr; align-items:start; }
 .category-catalogue { padding:18px 0 18px 36px; }
 .catalogue-row { display:grid; grid-template-columns:126px 1fr; gap:18px; min-height:74px; padding:12px 0; border-bottom:1px solid var(--line); }
@@ -207,3 +183,161 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .live-intro-empty p { color:var(--muted); font-size:10px; line-height:1.6; }
 @media(max-width:1050px){.live-distribution-intro{padding:38px 0}.live-probability-list{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}.live-note{grid-column:1/-1}}
 @media(max-width:520px){.live-probability-list{grid-template-columns:1fr}.live-distribution-intro{padding-left:10px;padding-right:10px}}
+
+/* Turnaround analysis — visually continues the light catalogue section. */
+.turnaround-section { margin:-55px 5vw 85px; border-bottom:1px solid var(--line); padding:32px 0 0; }
+.turnaround-head { display:grid; grid-template-columns:minmax(0,1fr) 220px; align-items:end; gap:34px; padding-bottom:28px; }
+.turnaround-head .eyebrow { margin-bottom:12px; }
+.turnaround-status { display:inline-flex; align-items:center; min-height:23px; padding:0 8px; border:1px solid currentColor; font-size:9px; font-weight:800; letter-spacing:.04em; }
+.turnaround-status.is-positive { color:var(--green); background:#e3f2e8; }
+.turnaround-status.is-caution { color:#8a6410; background:#f4ecd4; }
+.turnaround-status.is-negative { color:var(--red); background:#f5e3df; }
+.turnaround-head h2 { margin:12px 0 8px; color:var(--green); font:500 clamp(25px,2.6vw,38px) Georgia,"Microsoft YaHei",serif; letter-spacing:-.035em; }
+.turnaround-head>div:first-child>p:last-child { margin:0; color:var(--muted); font-size:10px; line-height:1.7; }
+.turnaround-head>div:first-child>p strong { color:var(--ink); }
+.turnaround-action { min-height:112px; padding:18px; border:1px solid var(--line); background:var(--cream); display:flex; flex-direction:column; justify-content:center; }
+.turnaround-action span { color:var(--muted); font-size:8px; }
+.turnaround-action strong { margin:7px 0 8px; font:500 24px Georgia,"Microsoft YaHei",serif; }
+.turnaround-action small { color:var(--muted); font-size:8px; }
+.turnaround-action.is-positive strong { color:var(--green); }
+.turnaround-action.is-caution strong { color:#8a6410; }
+.turnaround-action.is-negative strong { color:var(--red); }
+.percentile-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+.percentile-tier { min-width:0; padding:20px; border:1px solid var(--line); background:var(--cream); }
+.percentile-tier-head { display:grid; grid-template-columns:1fr auto; align-items:start; gap:5px 12px; padding-bottom:15px; border-bottom:1px solid var(--line); }
+.percentile-tier-head>span { color:var(--green); font:800 10px monospace; }
+.percentile-tier-head>strong { grid-row:1/3; grid-column:2; color:var(--ink); font:500 17px Georgia,"Microsoft YaHei",serif; }
+.percentile-tier-head>small { color:var(--muted); font-size:8px; }
+.tier-reached { min-height:132px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; text-align:center; }
+.tier-reached strong { color:var(--green); font-size:12px; }
+.tier-reached span { color:var(--muted); font-size:8px; }
+.tier-route-metrics { display:grid; grid-template-columns:1fr 1fr; margin:15px 0; border:1px solid var(--line); background:white; }
+.tier-route-metrics.single { grid-template-columns:1fr; }
+.tier-route-metrics>div { min-width:0; padding:12px; }
+.tier-route-metrics>div+div { border-left:1px solid var(--line); }
+.tier-route-metrics span,.tier-route-metrics small { display:block; color:var(--muted); font-size:8px; line-height:1.5; }
+.tier-route-metrics strong { display:block; margin:5px 0 3px; font:500 23px Georgia,serif; }
+.tier-outs,.tier-combos { padding-top:13px; border-top:1px solid var(--line); }
+.tier-combos { margin-top:13px; }
+.tier-outs>span,.tier-combos>span { display:block; margin-bottom:8px; color:var(--green); font-size:9px; font-weight:800; }
+.tier-outs>small,.tier-combos>small { color:var(--muted); font-size:8px; }
+.out-card-list { display:flex; justify-content:flex-start; flex-wrap:wrap; gap:5px; }
+.out-card-list>span { min-width:35px; height:40px; padding:0 7px; display:grid; place-items:center; border:1px solid #cbc9c0; background:white; font:700 12px Georgia,serif; }
+.out-card-list>span.red { color:var(--red); }
+.equity-out-list>span { min-width:48px; height:49px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
+.equity-out-list>span b { font:700 11px Georgia,serif; }
+.equity-out-list>span small { color:var(--muted); font:500 7px Arial,"Microsoft YaHei",sans-serif; }
+.tier-combos>div { display:flex; flex-wrap:wrap; gap:5px; }
+.tier-combos b { padding:6px 7px; border:1px solid #d8d5cc; background:white; font:600 9px Georgia,serif; }
+.tier-combos b small { display:block; margin-top:3px; color:var(--muted); font:500 7px Arial,"Microsoft YaHei",sans-serif; }
+.tier-combos em { padding:7px 4px; color:var(--muted); font-size:8px; font-style:normal; }
+.tier-loading { min-height:180px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); background:var(--cream); }
+.tier-loading strong { color:var(--green); font-size:12px; }
+.tier-loading span { color:var(--muted); font-size:9px; }
+.turnaround-decision { margin-top:22px; padding:15px 17px; display:flex; align-items:baseline; gap:5px; background:#e8eee9; border-left:3px solid var(--green); color:#425048; font-size:10px; line-height:1.65; }
+.turnaround-decision strong { color:var(--green); white-space:nowrap; }
+.turnaround-note { margin:13px 0 18px; color:var(--muted); font-size:8px; line-height:1.6; }
+@media(max-width:1050px){.percentile-grid{grid-template-columns:1fr}.tier-reached{min-height:90px}}
+@media(max-width:760px){.turnaround-section{margin:-55px 20px 70px}.turnaround-head{grid-template-columns:1fr;gap:18px}.turnaround-action{min-height:0}.turnaround-decision{align-items:flex-start;flex-direction:column;gap:2px}}
+@media(max-width:520px){.turnaround-section{margin-left:12px;margin-right:12px;padding-left:10px;padding-right:10px}.turnaround-head h2{font-size:25px}.out-card-list>span{min-width:32px;height:37px}}
+
+/* Mobile interaction pass: compact cards, thumb-friendly controls, and a no-scroll deck picker. */
+@media(max-width:640px){
+  html { scroll-padding-top:72px; }
+  body { min-width:320px; overflow-x:hidden; -webkit-text-size-adjust:100%; }
+  button,a,input { -webkit-tap-highlight-color:transparent; }
+  main { min-height:100dvh; overflow:clip; }
+  .topbar {
+    position:sticky;
+    top:0;
+    z-index:20;
+    height:calc(60px + env(safe-area-inset-top));
+    padding:env(safe-area-inset-top) max(16px,env(safe-area-inset-right)) 0 max(16px,env(safe-area-inset-left));
+    background:#f3f0e7f2;
+    backdrop-filter:blur(12px);
+  }
+  .brand { gap:9px; font-size:12px; }
+  .brand-mark { width:32px; height:32px; font-size:17px; }
+  .icon-button,.close-button { min-width:44px; min-height:44px; }
+  .workspace { margin:12px 8px 52px; border-radius:12px; overflow:hidden; box-shadow:0 12px 36px #17251d0d; }
+  .card-panel { padding:20px 18px; }
+  .section-head { margin-bottom:18px; }
+  .section-head h2 { font-size:14px; }
+  .hole-panel .cards-row { justify-content:center; }
+  .playing-card { width:72px; height:100px; padding:8px; border-radius:7px; touch-action:manipulation; }
+  .card-rank,.card-suit { font-size:23px; }
+  .board-streets { display:flex; align-items:flex-start; justify-content:space-between; gap:8px; overflow:visible; padding:0; }
+  .street-group { align-items:flex-start; min-width:0; }
+  .street-group:first-child { grid-column:auto; }
+  .street-cards { gap:5px; }
+  .board-panel .playing-card { width:clamp(44px,15vw,58px); height:clamp(64px,20.8vw,82px); padding:6px; }
+  .board-panel .card-rank,.board-panel .card-suit { font-size:clamp(18px,5.5vw,22px); }
+  .board-panel .playing-card.ghost small { font-size:8px; }
+  .board-panel .plus { font-size:18px; }
+  .table-controls { padding:20px 18px calc(22px + env(safe-area-inset-bottom)); gap:16px; }
+  .controls-head { align-items:center; gap:10px; }
+  .controls-row { grid-template-columns:1fr 1fr; gap:12px 8px; }
+  .control-field:first-child { grid-column:1/-1; }
+  .control-field>div { height:48px; }
+  .control-field b { min-width:36px; padding:0 7px; }
+  .control-field input { height:46px; padding:0 10px; font-size:16px; }
+  .calculate { min-height:54px; padding:0 16px; touch-action:manipulation; }
+  .calculation-hint,.table-controls .calculation-hint { margin:-4px 0 0; font-size:10px; line-height:1.55; }
+  .result-panel { padding:24px 20px calc(26px + env(safe-area-inset-bottom)); }
+  .result-top .eyebrow { text-align:center; }
+  .equity-ring { width:176px; height:176px; margin-top:24px; }
+  .ring-center { width:154px; height:154px; }
+  .ring-primary strong { font-size:47px; }
+  .empty-result { min-height:300px; }
+  .orbit { margin-bottom:24px; }
+  .empty-result h2 { font-size:23px; }
+  .mini-guide { margin-top:27px; flex-wrap:wrap; justify-content:center; }
+  .decision-card { margin-top:18px; padding:14px; }
+  .decision-card>div:first-child { align-items:flex-start; flex-direction:column; gap:6px; }
+  .decision-metrics { gap:6px; }
+  .picker-backdrop { place-items:end center; padding:0; }
+  .picker {
+    width:100%;
+    height:min(92dvh,760px);
+    max-height:calc(100dvh - env(safe-area-inset-top));
+    display:grid;
+    grid-template-rows:auto minmax(0,1fr) auto;
+    overflow:hidden;
+    border-radius:16px 16px 0 0;
+  }
+  .picker-head { padding:18px 16px 14px; }
+  .picker-head h2 { font-size:20px; }
+  .picker-head>div>p:last-child { margin-top:6px; }
+  .deck-grid { min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:10px 10px 14px; }
+  .suit-row {
+    min-width:0;
+    grid-template-columns:28px repeat(7,minmax(0,1fr));
+    gap:5px;
+    margin:6px 0;
+  }
+  .suit-name { grid-row:1 / span 2; }
+  .suit-row button { min-height:42px; aspect-ratio:.82; padding:4px; touch-action:manipulation; }
+  .suit-row button strong,.suit-row button span { font-size:13px; }
+  .picker-foot { padding:10px 12px calc(10px + env(safe-area-inset-bottom)); background:var(--paper); box-shadow:0 -8px 24px #1116130d; }
+  .clear-card,.confirm-cards { min-height:44px; padding:0 14px; touch-action:manipulation; }
+  .leaders-section { margin-left:8px; margin-right:8px; }
+  .leaders-intro { padding-left:10px; padding-right:10px; }
+  .category-catalogue { padding:12px 10px; }
+  .leaders-intro>.live-note { white-space:normal; line-height:1.55; }
+  .turnaround-section { margin-left:8px; margin-right:8px; padding-left:10px; padding-right:10px; }
+  .percentile-tier { padding:16px; }
+}
+
+@media(max-width:380px){
+  .workspace { margin-left:6px; margin-right:6px; }
+  .card-panel,.table-controls { padding-left:14px; padding-right:14px; }
+  .playing-card { width:68px; height:94px; }
+  .controls-row { gap:10px 6px; }
+  .control-field b { min-width:31px; padding:0 5px; }
+  .outcome-list div { padding-left:7px; padding-right:7px; }
+  .outcome-list span { font-size:7px; }
+  .picker-head { padding-left:12px; padding-right:12px; }
+  .deck-grid { padding-left:7px; padding-right:7px; }
+  .suit-row { grid-template-columns:25px repeat(7,minmax(0,1fr)); gap:4px; }
+  .suit-row button { min-height:40px; }
+}
