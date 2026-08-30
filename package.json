@@ -2,6 +2,7 @@
   "name": "poker-lab",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "pnpm@10.32.0",
   "engines": {
     "node": ">=22.13.0"
   },
@@ -9,7 +10,7 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts",
+    "test": "pnpm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:poker": "tsx --test tests/poker-exact.test.ts",
     "generate:preflop-calibration": "tsx scripts/generate-preflop-calibration.ts",

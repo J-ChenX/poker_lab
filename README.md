@@ -13,8 +13,8 @@
 需要 Node.js 22.13 或更高版本。
 
 ```bash
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 本地开发地址默认为 `http://localhost:3000`。积分数据写入本机的 Cloudflare D1 开发数据库；`.wrangler/` 内含本地数据，不要在清理构建文件时误删。
@@ -29,17 +29,17 @@ npm run dev
 ## 质量检查
 
 ```bash
-npm run lint
-npx tsc --noEmit
-npm test
+pnpm lint
+pnpm exec tsc --noEmit
+pnpm test
 ```
 
-`npm test` 会完成生产构建、校验 `/`、`/calculate` 与已停用的 `/score`，并运行积分规则和扑克计算测试。
+`pnpm test` 会完成生产构建、校验 `/`、`/calculate` 与已停用的 `/score`，并运行积分规则和扑克计算测试。
 
 ## 构建与发布
 
 ```bash
-npm run build
+pnpm build
 ```
 
 项目使用 vinext 构建并部署到 OpenAI Sites；`.openai/hosting.json` 声明了 Sites 项目及 D1 绑定。生产访问地址由部署平台和 cpolar 入口配置决定。
