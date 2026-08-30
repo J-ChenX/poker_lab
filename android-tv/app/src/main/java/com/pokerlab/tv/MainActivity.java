@@ -43,6 +43,7 @@ import org.json.JSONObject;
 import java.net.URI;
 import java.text.NumberFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -69,8 +70,23 @@ public final class MainActivity extends Activity {
     private final ExecutorService io = Executors.newSingleThreadExecutor();
     private final Handler main = new Handler(Looper.getMainLooper());
     private final NumberFormat numbers = NumberFormat.getIntegerInstance(Locale.CHINA);
+    private final Runnable statePoll = new Runnable() {
+        @Override public void run() {
+            refreshState(false);
+            main.postDelayed(this, 2500);
+        }
+    };
 
     private WebView webView;
+    private LinearLayout nativeDashboard;
+    private LinearLayout nativePlayerList;
+    private TextView nativePlayerTotal;
+    private TextView nativeLevelValue;
+    private TextView nativePlayerCount;
+    private TextView nativeSmallBlind;
+    private TextView nativeBigBlind;
+    private TextView nativeReviveCost;
+    private TextView nativeReviveChips;
     private TextView connectionStatus;
     private Button controlButton;
     private Dialog controlDialog;
@@ -78,6 +94,7 @@ public final class MainActivity extends Activity {
     private String baseUrl;
     private String authUsername;
     private String authPassword;
+    private volatile boolean refreshInFlight;
 
     @SuppressLint("SetJavaScriptEnabled")
     @Override
@@ -125,6 +142,10 @@ public final class MainActivity extends Activity {
         });
         root.addView(webView, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
+        nativeDashboard = createNativeDashboard();
+        nativeDashboard.setVisibility(View.GONE);
+        root.addView(nativeDashboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         LinearLayout overlay = new LinearLayout(this);
         overlay.setOrientation(LinearLayout.HORIZONTAL);
         overlay.setGravity(Gravity.CENTER_VERTICAL);
@@ -160,9 +181,186 @@ public final class MainActivity extends Activity {
     }
 
     private void refreshState(boolean rebuildPanel) {
-        runStateTask(() -> new PokerApi(baseUrl, authUsername, authPassword).fetchState(), "正在同步", next -> {
+        if (refreshInFlight) return;
+        refreshInFlight = true;
+        runStateTask(() -> {
+            try { return new PokerApi(baseUrl, authUsername, authPassword).fetchState(); }
+            finally { refreshInFlight = false; }
+        }, "正在同步", next -> {
             if (rebuildPanel && controlDialog != null && controlDialog.isShowing()) renderControlPanel();
         });
+    }
+
+    private LinearLayout createNativeDashboard() {
+        LinearLayout dashboard = new LinearLayout(this);
+        dashboard.setOrientation(LinearLayout.VERTICAL);
+        dashboard.setPadding(dp(30), dp(14), dp(30), dp(26));
+        dashboard.setBackgroundColor(BG);
+
+        LinearLayout header = row();
+        TextView brand = text("♠  牌桌实时看板", 21, TEXT, true);
+        header.addView(brand, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        dashboard.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(72)));
+
+        LinearLayout body = row();
+        body.setGravity(Gravity.FILL);
+
+        LinearLayout ranking = new LinearLayout(this);
+        ranking.setOrientation(LinearLayout.VERTICAL);
+        ranking.setPadding(dp(20), dp(18), dp(20), dp(18));
+        ranking.setBackground(rounded(PANEL, 16));
+        LinearLayout rankingHead = row();
+        rankingHead.addView(text("01   实时积分排名", 22, TEXT, true), new LinearLayout.LayoutParams(0, dp(48), 1));
+        nativePlayerTotal = text("0 位牌手", 13, MUTED, false);
+        nativePlayerTotal.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+        rankingHead.addView(nativePlayerTotal, new LinearLayout.LayoutParams(dp(100), dp(48)));
+        ranking.addView(rankingHead);
+
+        ScrollView playerScroll = new ScrollView(this);
+        playerScroll.setFillViewport(true);
+        nativePlayerList = new LinearLayout(this);
+        nativePlayerList.setOrientation(LinearLayout.VERTICAL);
+        playerScroll.addView(nativePlayerList, new ScrollView.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        ranking.addView(playerScroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        body.addView(ranking, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.7f));
+
+        LinearLayout right = new LinearLayout(this);
+        right.setOrientation(LinearLayout.VERTICAL);
+        LinearLayout.LayoutParams rightParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1.8f);
+        rightParams.leftMargin = dp(18);
+        body.addView(right, rightParams);
+
+        LinearLayout levelCard = row();
+        levelCard.setPadding(dp(30), dp(18), dp(30), dp(18));
+        levelCard.setBackground(rounded(GREEN, 18));
+        LinearLayout levelLabel = new LinearLayout(this);
+        levelLabel.setOrientation(LinearLayout.VERTICAL);
+        levelLabel.setGravity(Gravity.CENTER_VERTICAL);
+        levelLabel.addView(text("当前轮次", 18, TEXT, true));
+        levelLabel.addView(text("CURRENT LEVEL", 9, Color.rgb(145, 197, 170), false));
+        levelCard.addView(levelLabel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        nativeLevelValue = text("L—", 76, LIME, true);
+        nativeLevelValue.setGravity(Gravity.CENTER);
+        levelCard.addView(nativeLevelValue, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        nativePlayerCount = text("— 人开局", 23, TEXT, true);
+        nativePlayerCount.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+        levelCard.addView(nativePlayerCount, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        LinearLayout.LayoutParams levelParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.72f);
+        levelParams.bottomMargin = dp(14);
+        right.addView(levelCard, levelParams);
+
+        LinearLayout blindRow = row();
+        blindRow.setGravity(Gravity.FILL);
+        LinearLayout smallCard = nativeNumberCard("小盲", "SB", false);
+        nativeSmallBlind = (TextView) smallCard.getTag();
+        blindRow.addView(smallCard, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        LinearLayout bigCard = nativeNumberCard("大盲", "BB", true);
+        nativeBigBlind = (TextView) bigCard.getTag();
+        LinearLayout.LayoutParams bigParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        bigParams.leftMargin = dp(14);
+        blindRow.addView(bigCard, bigParams);
+        LinearLayout.LayoutParams blindParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1.18f);
+        blindParams.bottomMargin = dp(14);
+        right.addView(blindRow, blindParams);
+
+        LinearLayout reviveCard = row();
+        reviveCard.setPadding(dp(30), dp(18), dp(30), dp(18));
+        reviveCard.setBackground(rounded(PANEL, 18));
+        LinearLayout reviveLabel = new LinearLayout(this);
+        reviveLabel.setOrientation(LinearLayout.VERTICAL);
+        reviveLabel.setGravity(Gravity.CENTER_VERTICAL);
+        reviveLabel.addView(text("复活信息", 18, TEXT, true));
+        reviveLabel.addView(text("REVIVAL", 9, MUTED, false));
+        reviveCard.addView(reviveLabel, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 0.72f));
+        nativeReviveCost = nativeReviveMetric(reviveCard, "本轮复活价格");
+        nativeReviveChips = nativeReviveMetric(reviveCard, "复活筹码");
+        right.addView(reviveCard, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 0.78f));
+
+        dashboard.addView(body, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        return dashboard;
+    }
+
+    private LinearLayout nativeNumberCard(String label, String suffix, boolean accent) {
+        LinearLayout card = new LinearLayout(this);
+        card.setOrientation(LinearLayout.VERTICAL);
+        card.setPadding(dp(28), dp(20), dp(28), dp(20));
+        card.setBackground(rounded(accent ? Color.rgb(10, 68, 48) : PANEL, 18));
+        card.addView(text(label, 18, TEXT, true));
+        TextView value = text("—", 72, accent ? LIME : TEXT, true);
+        value.setGravity(Gravity.CENTER_VERTICAL);
+        card.addView(value, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
+        TextView unit = text(suffix, 24, Color.rgb(105, 130, 61), true);
+        unit.setGravity(Gravity.END);
+        card.addView(unit);
+        card.setTag(value);
+        return card;
+    }
+
+    private TextView nativeReviveMetric(LinearLayout parent, String label) {
+        LinearLayout metric = new LinearLayout(this);
+        metric.setOrientation(LinearLayout.VERTICAL);
+        metric.setGravity(Gravity.CENTER_VERTICAL);
+        metric.setPadding(dp(24), 0, 0, 0);
+        metric.addView(text(label, 13, MUTED, false));
+        TextView value = text("—", 42, TEXT, true);
+        metric.addView(value);
+        LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+        params.leftMargin = dp(16);
+        parent.addView(metric, params);
+        return value;
+    }
+
+    private void renderNativeDashboard(GameState next) {
+        if (nativeDashboard == null) return;
+        nativeDashboard.setVisibility(View.VISIBLE);
+        webView.setVisibility(View.INVISIBLE);
+        nativePlayerTotal.setText(String.format(Locale.CHINA, "%d 位牌手", next.players.size()));
+        nativeLevelValue.setText("L" + next.currentLevel);
+        nativePlayerCount.setText(String.format(Locale.CHINA, "%d 人开局", next.playerCount));
+        nativeSmallBlind.setText(numbers.format(Rulebook.SMALL_BLINDS[next.currentLevel - 1]));
+        nativeBigBlind.setText(numbers.format(Rulebook.BIG_BLINDS[next.currentLevel - 1]));
+        int cost = Rulebook.reviveCost(next.playerCount, next.currentLevel);
+        nativeReviveCost.setText(cost > 0 ? "−" + numbers.format(cost) + " 分 / 次" : "不可复活");
+        int chips = Rulebook.REVIVE_CHIPS[next.currentLevel - 1];
+        nativeReviveChips.setText(cost > 0 && chips > 0 ? numbers.format(chips) + " 筹码" : "—");
+
+        nativePlayerList.removeAllViews();
+        List<GameState.Player> sorted = new ArrayList<>(next.players);
+        Collections.sort(sorted, (first, second) -> {
+            int scoreOrder = Integer.compare(second.score, first.score);
+            return scoreOrder != 0 ? scoreOrder : first.name.compareToIgnoreCase(second.name);
+        });
+        if (sorted.isEmpty()) {
+            TextView empty = text("牌桌正在等待玩家\n请在手机控制台中添加人员", 18, MUTED, false);
+            empty.setGravity(Gravity.CENTER);
+            nativePlayerList.addView(empty, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(240)));
+            return;
+        }
+        for (int index = 0; index < sorted.size(); index++) {
+            GameState.Player player = sorted.get(index);
+            LinearLayout item = row();
+            item.setPadding(dp(10), dp(5), dp(12), dp(5));
+            item.setBackground(rounded(index < 3 ? Color.rgb(30, 57, 33) : PANEL_LIGHT, 10));
+            TextView rank = text(String.valueOf(index + 1), 15, index < 3 ? LIME : MUTED, true);
+            rank.setGravity(Gravity.CENTER);
+            item.addView(rank, new LinearLayout.LayoutParams(dp(34), ViewGroup.LayoutParams.MATCH_PARENT));
+            String initials = player.name.substring(0, Math.min(2, player.name.length())).toUpperCase(Locale.CHINA);
+            TextView avatar = text(initials, 11, TEXT, true);
+            avatar.setGravity(Gravity.CENTER);
+            avatar.setBackground(rounded(Color.rgb(22, 60, 45), 24));
+            item.addView(avatar, new LinearLayout.LayoutParams(dp(42), dp(42)));
+            TextView name = text(player.name, 17, TEXT, true);
+            name.setGravity(Gravity.CENTER_VERTICAL);
+            LinearLayout.LayoutParams nameParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
+            nameParams.leftMargin = dp(12);
+            item.addView(name, nameParams);
+            TextView score = text(signed(player.score) + " 分", 21, player.score < 0 ? RED : LIME, true);
+            score.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
+            item.addView(score, new LinearLayout.LayoutParams(dp(120), ViewGroup.LayoutParams.MATCH_PARENT));
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, dp(58));
+            itemParams.bottomMargin = dp(7);
+            nativePlayerList.addView(item, itemParams);
+        }
     }
 
     private void openControlPanel() {
@@ -452,6 +650,8 @@ public final class MainActivity extends Activity {
                         .putString(PREF_AUTH_PASSWORD, authPassword)
                         .apply();
                     state = null;
+                    nativeDashboard.setVisibility(View.GONE);
+                    webView.setVisibility(View.VISIBLE);
                     webView.clearCache(false);
                     loadDashboard();
                     refreshState(true);
@@ -558,6 +758,7 @@ public final class MainActivity extends Activity {
                 GameState next = task.run();
                 main.post(() -> {
                     state = next;
+                    renderNativeDashboard(next);
                     setConnectionText("已同步 · v" + next.version, true);
                     success.accept(next);
                 });
@@ -689,6 +890,14 @@ public final class MainActivity extends Activity {
     protected void onResume() {
         super.onResume();
         enterImmersiveMode();
+        main.removeCallbacks(statePoll);
+        main.post(statePoll);
+    }
+
+    @Override
+    protected void onPause() {
+        main.removeCallbacks(statePoll);
+        super.onPause();
     }
 
     private void enterImmersiveMode() {
@@ -704,6 +913,7 @@ public final class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        main.removeCallbacks(statePoll);
         io.shutdownNow();
         if (webView != null) {
             webView.stopLoading();

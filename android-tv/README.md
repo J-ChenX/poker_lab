@@ -12,6 +12,7 @@ Android TV 遥控器应用。启动后全屏打开 `https://tv.example.com/displ
 - 单人复活扣分
 - 可在电视端修改服务器地址
 - 支持 cpolar HTTP Basic 访问保护；首次打开会提示输入访问保护账号和密码
+- 看板使用 Android 原生界面并每 2.5 秒读取共享状态，不依赖电视内置 WebView 的前端兼容性
 - 支持遥控器方向键、确定键和菜单键
 
 ## 构建
