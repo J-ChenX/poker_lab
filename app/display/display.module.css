@@ -154,7 +154,7 @@
 .blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--card-gap); }
 .blindGrid article {
   min-width: 0;
-  padding: 2.2vh var(--state-gutter);
+  padding: 3vh var(--state-gutter);
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -168,7 +168,7 @@
 
 .reviveCard {
   min-height: 0;
-  padding: 2.2vh 0;
+  padding: 3vh 0 2.2vh;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   grid-template-rows: auto 1fr;
@@ -237,7 +237,7 @@
 .panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
 .panelOpen .blindGrid { gap: var(--card-gap); }
 .panelOpen .blindGrid article > strong { font-size: clamp(64px, 6.4vw, 104px); }
-.panelOpen .reviveCard { padding: 2.2vh 0 22px; grid-template-columns: 1fr 1fr; column-gap: var(--card-gap); row-gap: 8px; }
+.panelOpen .reviveCard { padding: 3vh 0 22px; grid-template-columns: 1fr 1fr; column-gap: var(--card-gap); row-gap: 8px; }
 .panelOpen .reviveCard > div { grid-column: 1 / -1; }
 .panelOpen .reviveCard > section { border-left: 0; }
 .panelOpen .reviveCard > section > strong { gap: 5px; font-size: clamp(30px, 3.2vw, 54px); }
