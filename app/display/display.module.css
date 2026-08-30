@@ -212,9 +212,19 @@
 .panelOpen .headerControls { gap: 6px; }
 .panelOpen .moreControls { display: none; }
 .panelOpen .advanceLevel { min-width: 136px; }
-.panelOpen .dashboard { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.panelOpen .dashboard {
+  min-height: 0;
+  height: calc(100vh - 82px - 3vh);
+  padding-top: 1.5vh;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0;
+}
 .panelOpen .ranking { display: none; }
-.panelOpen .gameState { min-height: calc(100vh - 110px); grid-template-rows: .72fr 1.18fr .8fr; }
+.panelOpen .gameState {
+  min-height: 0;
+  height: 100%;
+  grid-template-rows: .72fr 1.18fr .8fr;
+}
 .panelOpen .levelCard { padding-inline: 2.2vw; }
 .panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
 .panelOpen .blindGrid { gap: var(--card-gap); }
@@ -256,6 +266,7 @@
   color: #b9ccc1;
   background: rgb(255 255 255 / 4%);
   cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
 }
 .compactPicker button { height: 48px; display: flex; align-items: baseline; justify-content: center; gap: 2px; }
 .compactPicker b { color: #eaf4ee; font: 21px "Noto Serif SC", serif; }
@@ -264,9 +275,26 @@
 .compactLevels button { min-height: 58px; padding: 7px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
 .compactLevels b { color: #f1f7f3; font: 19px "Noto Serif SC", serif; }
 .compactLevels span { color: var(--muted); font-size: 10px; }
-.compactPicker button:hover, .compactPicker button:focus-visible, .compactLevels button:hover, .compactLevels button:focus-visible { outline: none; border-color: rgb(200 241 90 / 48%); background: rgb(200 241 90 / 8%); }
+.compactPicker button:hover:not(:disabled):not(.controlSelected),
+.compactLevels button:hover:not(:disabled):not(.controlSelected) {
+  border-color: rgb(231 244 237 / 75%);
+  background: rgb(255 255 255 / 10%);
+}
+.compactPicker button:focus-visible:not(.controlSelected),
+.compactLevels button:focus-visible:not(.controlSelected) {
+  outline: 2px solid #e7f4ed;
+  outline-offset: 2px;
+  border-color: #e7f4ed;
+  background: rgb(255 255 255 / 13%);
+}
 .compactPicker button:disabled, .compactLevels button:disabled { cursor: wait; }
-.controlSelected { border-color: rgb(200 241 90 / 65%) !important; color: var(--lime) !important; background: rgb(200 241 90 / 12%) !important; box-shadow: inset 0 0 0 1px rgb(200 241 90 / 10%); }
+.controlSelected {
+  border-color: var(--lime) !important;
+  color: var(--lime) !important;
+  background: rgb(200 241 90 / 24%) !important;
+  box-shadow: inset 0 0 0 1px rgb(200 241 90 / 28%), 0 0 16px rgb(200 241 90 / 10%);
+}
+.controlSelected:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 .controlSelected b { color: var(--lime) !important; }
 .controlRanks { display: grid; grid-template-columns: 1fr; gap: 9px; }
 .controlRankRow { min-width: 0; min-height: 66px; padding: 9px 10px; display: grid; grid-template-columns: minmax(180px, .42fr) 1fr; align-items: center; gap: 14px; border: 1px solid rgb(172 222 193 / 14%); border-radius: 10px; background: rgb(255 255 255 / 3%); }
@@ -330,7 +358,8 @@
   .playerList { grid-template-columns: 1fr 1fr; }
   .gameState { min-height: 680px; }
   .panelOpen { width: 100%; padding-inline: 18px; }
-  .panelOpen .dashboard { grid-template-columns: 1fr; }
+  .panelOpen .dashboard { height: auto; grid-template-columns: 1fr; }
+  .panelOpen .gameState { height: auto; }
 }
 
 @media (max-width: 560px) {
