@@ -38,7 +38,7 @@ import android.widget.TextView;
  * connection recovery and translating remote-control keys into DOM keyboard events.
  */
 public final class MainActivity extends Activity {
-    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1&apk=2.1.0";
+    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1&apk=2.2.0";
     private static final String PREFS = "poker_lab_tv";
     private static final String PREF_AUTH_USERNAME = "auth_username";
     private static final String PREF_AUTH_PASSWORD = "auth_password";
@@ -96,7 +96,7 @@ public final class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.1");
+        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.2");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
@@ -208,7 +208,11 @@ public final class MainActivity extends Activity {
                 "document.body.style.margin='0';" +
                 "window.__pokerLabTvKey=function(type,key,repeat){" +
                     "var target=document.activeElement&&document.activeElement!==document.body?document.activeElement:window;" +
-                    "var event=new KeyboardEvent(type,{key:key,code:key,bubbles:true,cancelable:true,repeat:!!repeat});" +
+                    "var event;" +
+                    "try{event=new KeyboardEvent(type,{key:key,code:key,bubbles:true,cancelable:true,repeat:!!repeat});}" +
+                    "catch(error){event=document.createEvent('Event');event.initEvent(type,true,true);" +
+                        "try{Object.defineProperty(event,'key',{value:key});Object.defineProperty(event,'code',{value:key});}" +
+                        "catch(ignore){event.key=key;event.code=key;}}" +
                     "var allowed=target.dispatchEvent(event);" +
                     "if(type==='keydown'&&key==='Enter'&&allowed){" +
                         "var active=document.activeElement;" +

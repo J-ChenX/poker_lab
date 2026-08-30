@@ -27,6 +27,8 @@ export default function DisplayClient({ initialState }: { initialState: DisplayS
   }, []);
 
   useEffect(() => {
+    const tvWindow = window as Window & { __pokerLabClientReady?: boolean };
+    tvWindow.__pokerLabClientReady = true;
     const initialFrame = window.requestAnimationFrame(() => void refresh());
     const timer = window.setInterval(() => void refresh(), 2000);
     const onVisibilityChange = () => document.visibilityState === "visible" && void refresh();
@@ -35,6 +37,7 @@ export default function DisplayClient({ initialState }: { initialState: DisplayS
       window.cancelAnimationFrame(initialFrame);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
+      tvWindow.__pokerLabClientReady = false;
     };
   }, [refresh]);
 
@@ -94,7 +97,7 @@ export default function DisplayClient({ initialState }: { initialState: DisplayS
     window.requestAnimationFrame(() => advanceLevelRef.current?.focus());
   }, []);
 
-  return <main className={`${styles.screen} ${controlOpen ? styles.panelOpen : ""}`}>
+  return <main className={`${styles.screen} ${controlOpen ? styles.panelOpen : ""}`} data-score-version={state?.version ?? 0}>
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
       <div className={styles.headerControls}>

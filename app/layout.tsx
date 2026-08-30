@@ -70,6 +70,24 @@ const legacyTvBootstrap = `
       document.head.appendChild(meta);
     }
     meta.content = "width=1920,user-scalable=no,viewport-fit=cover";
+    window.addEventListener("load", function () {
+      window.setInterval(function () {
+        if (window.__pokerLabClientReady) return;
+        var root = document.querySelector("[data-score-version]");
+        if (!root) return;
+        var request = new XMLHttpRequest();
+        request.open("GET", "/api/score-state?legacy=" + Date.now(), true);
+        request.onreadystatechange = function () {
+          if (request.readyState !== 4 || request.status !== 200) return;
+          try {
+            var next = JSON.parse(request.responseText);
+            var current = Number(root.getAttribute("data-score-version") || 0);
+            if (Number(next.version || 0) > current) window.location.reload();
+          } catch (error) {}
+        };
+        request.send();
+      }, 3000);
+    });
   }
 })();`;
 

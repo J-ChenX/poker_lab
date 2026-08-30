@@ -40,8 +40,7 @@
   min-width: 158px;
   min-height: 48px;
   padding: 7px 12px 7px 16px;
-  display: grid;
-  grid-template-columns: auto auto 28px;
+  display: flex;
   align-items: center;
   gap: 10px;
   border: 1px solid rgb(200 241 90 / 34%);
@@ -50,6 +49,8 @@
   background: linear-gradient(125deg, rgb(200 241 90 / 9%), rgb(34 181 115 / 13%));
   cursor: pointer;
 }
+.advanceLevel > span, .advanceLevel > strong { white-space: nowrap; }
+.advanceLevel > i { flex: 0 0 28px; }
 .advanceLevel span { color: #afc6ba; font-size: 12px; }
 .advanceLevel strong { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: 21px; }
 .advanceLevel i { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #10291f; background: var(--lime); font-style: normal; font-size: 17px; }

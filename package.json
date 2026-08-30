@@ -7,11 +7,12 @@
     "node": ">=22.13.0"
   },
   "scripts": {
-    "dev": "vinext dev",
+    "dev": "pnpm run build && wrangler dev --config wrangler.local.jsonc --ip 0.0.0.0 --port 3000 --local --persist-to .wrangler/state --log-level warn",
+    "dev:hot": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
     "test": "pnpm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
     "test:poker": "tsx --test tests/poker-exact.test.ts",
     "generate:preflop-calibration": "tsx scripts/generate-preflop-calibration.ts",
     "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts"
