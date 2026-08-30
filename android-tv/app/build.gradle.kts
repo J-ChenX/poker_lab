@@ -10,8 +10,8 @@ android {
         applicationId = "com.pokerlab.tv"
         minSdk = 21
         targetSdk = 36
-        versionCode = 6
-        versionName = "2.3.0"
+        versionCode = 7
+        versionName = "2.4.0"
     }
 
     buildTypes {
@@ -21,6 +21,10 @@ android {
             // debug APK so the television can install this version as an in-place upgrade.
             signingConfig = signingConfigs.getByName("debug")
         }
+    }
+
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

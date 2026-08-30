@@ -1,16 +1,17 @@
 # Poker Lab Android TV
 
 Android TV 遥控器应用。启动后以 1920 × 1080 电视视口全屏运行
-`https://tv.example.com/display`。APK 与网页使用同一套 HTML、CSS、字体、状态同步和牌桌控制逻辑，避免维护第二套原生界面造成视觉差异。
+`https://tv.example.com/display`。看板仍使用网页画面；下一等级按钮、遥控焦点和牌桌控制面板使用 Android 原生控件，兼容无法运行现代 React 客户端代码的旧电视 WebView。
 
 ## 功能
 
 - 直接渲染定稿 `/display` 页面，视觉与网页保持一致
 - 网页更新后 APK 无需重新复制一套布局
 - 全屏沉浸显示并保持屏幕常亮
-- 3–12 人、L1–L10、名次结算、淘汰加分与复活扣分功能完整保留
-- 方向键、确认键、返回键和菜单键映射到网页的电视遥控交互
-- 右方向键或菜单键打开牌桌控制，返回键关闭控制面板
+- 3–12 人、L1–L10、名次结算、淘汰加分与复活扣分由原生控制面板完成
+- 下一等级按钮是原生 Android 按钮，方向键和确认键不依赖 WebView 的 JavaScript 激活
+- 右方向键或菜单键打开原生牌桌控制，返回键关闭控制面板
+- APK 原生轮询牌桌状态；旧 WebView 在数据版本变化时自动刷新网页画面
 - 网络或电脑端服务中断时显示重试页面
 - 支持 cpolar HTTP Basic 访问保护；首次打开会提示输入并保存在电视本机
 
@@ -26,9 +27,24 @@ APK 支持 Android 5.0（API 21）及以上系统。构建需要 JDK 17、Androi
 
 ## 电视安装
 
-1. 将 `PokerLab-TV-v2.3.0.apk` 复制到 U 盘。
+1. 将 `PokerLab-TV-v2.4.0.apk` 复制到 U 盘。
 2. 在电视文件管理器中打开 APK；首次安装时允许该文件管理器安装未知来源应用。
 3. 从电视应用列表启动“Poker Lab 牌桌看板”。
 4. 如果 cpolar 开启了访问保护，首次启动时输入与浏览器访问网站相同的账号和密码。
 
-应用启动后默认显示实时看板。按右方向键或菜单键打开网页牌桌控制面板；使用方向键移动、确认键选择，返回键关闭控制面板。
+应用启动后焦点默认位于“下一等级”。按确认键升到下一级；按右方向键或菜单键打开原生牌桌控制面板，使用方向键移动、确认键选择，返回键关闭。
+
+## 旧版 Android TV 回归环境
+
+本机已建立 `poker_tv_api23`（Android TV 6.0 / API 23 / 1920 × 1080）模拟器，用来覆盖 TCL 电视常见的旧 WebView 行为。调试包会连接电脑端 `http://10.0.2.2:3000/display?tvapp=1`。
+
+```powershell
+pnpm dev
+cd android-tv
+./gradlew.bat assembleDebug
+adb -s emulator-5556 install -r app/build/outputs/apk/debug/app-debug.apk
+adb -s emulator-5556 shell am start -n com.pokerlab.tv/.MainActivity
+adb -s emulator-5556 shell input keyevent 23
+```
+
+最后一条命令模拟遥控器确认键，可配合 `/api/score-state` 检查等级是否实际更新。
