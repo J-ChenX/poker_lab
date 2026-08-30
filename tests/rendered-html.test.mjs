@@ -52,6 +52,7 @@ test("电视看板可通过 /display 打开", async () => {
   const html = await response.text();
   assert.match(html, /牌桌实时看板/);
   assert.match(html, /实时积分排名/);
+  assert.doesNotMatch(html, /打开更多牌桌控制/);
 });
 
 test("旧的 /score 路径不再兼容", async () => {

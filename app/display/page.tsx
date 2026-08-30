@@ -34,6 +34,16 @@ export default function DisplayPage() {
     };
   }, [refresh]);
 
+  useEffect(() => {
+    const openControlsFromRemote = (event: KeyboardEvent) => {
+      if (event.key !== "ArrowRight" || !state || controlOpen) return;
+      event.preventDefault();
+      setControlOpen(true);
+    };
+    window.addEventListener("keydown", openControlsFromRemote);
+    return () => window.removeEventListener("keydown", openControlsFromRemote);
+  }, [controlOpen, state]);
+
   const sortedPlayers = useMemo(() => [...(state?.players ?? [])].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-CN")), [state?.players]);
   const playerCount = state?.playerCount ?? 5;
   const currentLevel = state?.currentLevel ?? 1;
@@ -77,7 +87,6 @@ export default function DisplayPage() {
           <strong>{currentLevel >= BLIND_LEVELS.length ? "L10" : `L${currentLevel + 1}`}</strong>
           <i aria-hidden="true">→</i>
         </button>
-        <button className={styles.moreControls} type="button" aria-label="打开更多牌桌控制" aria-haspopup="dialog" aria-expanded={controlOpen} disabled={!state} onClick={() => setControlOpen(true)}><span>牌桌控制</span><b aria-hidden="true">•••</b></button>
       </div>
     </header>
 

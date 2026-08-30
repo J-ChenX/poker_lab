@@ -52,24 +52,6 @@
 .advanceLevel i { width: 28px; height: 28px; display: grid; place-items: center; border-radius: 50%; color: #10291f; background: var(--lime); font-style: normal; font-size: 17px; }
 .advanceLevel:hover, .advanceLevel:focus-visible { outline: none; border-color: rgb(200 241 90 / 70%); background: rgb(200 241 90 / 14%); }
 .advanceLevel:disabled { opacity: .48; cursor: default; }
-.moreControls {
-  min-width: 94px;
-  padding: 6px 14px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 1px;
-  border: 1px solid rgb(190 220 203 / 22%);
-  border-radius: 12px;
-  color: #d4e2da;
-  background: rgb(255 255 255 / 5%);
-  cursor: pointer;
-}
-.moreControls span { font-size: 11px; }
-.moreControls b { color: var(--lime); font-size: 13px; letter-spacing: .2em; line-height: .7; }
-.moreControls:hover, .moreControls:focus-visible { outline: none; border-color: rgb(200 241 90 / 55%); background: rgb(200 241 90 / 10%); }
-.moreControls:disabled { opacity: .45; cursor: default; }
 
 .dashboard {
   min-height: calc(97vh - 82px);
@@ -218,7 +200,6 @@
 .panelOpen .header { grid-template-columns: 1fr auto; }
 .panelOpen .brand small { display: none; }
 .panelOpen .headerControls { gap: 6px; }
-.panelOpen .moreControls { display: none; }
 .panelOpen .advanceLevel { min-width: 136px; }
 .panelOpen .dashboard {
   min-height: 0;
@@ -377,9 +358,6 @@
   .advanceLevel span { font-size: 10px; }
   .advanceLevel strong { font-size: 17px; }
   .advanceLevel i { display: none; }
-  .moreControls { min-width: 44px; padding: 5px 8px; }
-  .moreControls span { display: none; }
-  .moreControls b { font-size: 12px; }
   .dashboard { padding-top: 12px; gap: 10px; }
   .playerList { grid-template-columns: 1fr; }
   .playerList article { min-height: 60px; padding: 8px; grid-template-columns: 25px 38px minmax(0, 1fr) auto; gap: 8px; }
