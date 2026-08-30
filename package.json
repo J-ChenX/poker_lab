@@ -1,5 +1,5 @@
 {
-  "name": "site-creator-vinext-starter",
+  "name": "poker-lab",
   "version": "0.1.0",
   "private": true,
   "engines": {
@@ -9,22 +9,21 @@
     "dev": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "npm run build && node --test tests/rendered-html.test.mjs",
+    "test": "npm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "test:poker": "tsx --test tests/poker-exact.test.ts",
     "generate:preflop-calibration": "tsx scripts/generate-preflop-calibration.ts",
-    "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts",
-    "db:generate": "drizzle-kit generate"
+    "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-sc": "^5.2.8",
     "@fontsource/noto-serif-sc": "^5.2.8",
-    "drizzle-orm": "0.45.2",
     "react": "19.2.6",
     "react-dom": "19.2.6"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.37.1",
+    "@cloudflare/workers-types": "^4.20260702.1",
     "@eslint/js": "9.39.4",
     "@next/eslint-plugin-next": "16.2.6",
     "@openai/sites-vite-plugin": "0.1.0",
@@ -34,7 +33,6 @@
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
-    "drizzle-kit": "0.31.10",
     "eslint": "9.39.4",
     "eslint-plugin-jsx-a11y": "6.10.2",
     "eslint-plugin-react": "7.37.5",
@@ -42,6 +40,7 @@
     "globals": "16.4.0",
     "react-server-dom-webpack": "19.2.6",
     "tailwindcss": "4.2.1",
+    "tsx": "^4.23.13",
     "typescript": "5.9.3",
     "typescript-eslint": "8.59.3",
     "vinext": "1.0.0-beta.2",

@@ -330,11 +330,11 @@ export function estimateMultiway(
 }
 
 const CONDITIONAL_MODEL_SAMPLES = 4_096;
-const CONDITIONAL_RANGES = [
+const CONDITIONAL_RANGES: ReadonlyArray<{ min: 40 | 60 | 80; max?: 60 | 80; label: string }> = [
   { min: 40 as const, max: 60 as const, label: "40–60%" },
   { min: 60 as const, max: 80 as const, label: "60–80%" },
   { min: 80 as const, label: ">80%" },
-] as const;
+];
 
 function buildConditionalWinAnalysis(
   source: ConditionalWinAnalysis["source"],

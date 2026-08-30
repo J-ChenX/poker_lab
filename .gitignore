@@ -38,4 +38,8 @@ yarn-error.log*
 /.wrangler/
 /outputs/
 /work/
+/.site-build.tar.gz
+/.codex-docx-qa/
+/docx_render_check*/
+/build_poker_rules_manual.py
 *.tsbuildinfo

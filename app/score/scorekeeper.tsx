@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BLIND_LEVELS, knockoutBase, knockoutShare, placementScore, reviveCost, scoringPlaceCount } from "./rules";
 import styles from "./score.module.css";
@@ -258,7 +259,7 @@ export default function Scorekeeper() {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a className={styles.brand} href="/"><span>♠</span><strong>牌桌积分簿</strong></a>
+        <Link className={styles.brand} href="/"><span>♠</span><strong>牌桌积分簿</strong></Link>
         <div className={styles.headerMeta}><span className={styles.liveDot} />所有设备自动同步</div>
       </header>
 
