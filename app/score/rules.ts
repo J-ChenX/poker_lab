@@ -13,16 +13,16 @@ export const REVIVE_COSTS: Record<number, number[]> = {
 };
 
 export const BLIND_LEVELS = [
-  { level: 1, small: 50, big: 100, chips: 20_000 },
-  { level: 2, small: 100, big: 200, chips: 30_000 },
-  { level: 3, small: 200, big: 400, chips: 45_000 },
-  { level: 4, small: 300, big: 600, chips: 50_000 },
-  { level: 5, small: 500, big: 1_000, chips: 60_000 },
-  { level: 6, small: 700, big: 1_400, chips: 65_000 },
-  { level: 7, small: 1_000, big: 2_000, chips: 70_000 },
-  { level: 8, small: 1_300, big: 2_600, chips: null },
-  { level: 9, small: 1_600, big: 3_200, chips: null },
-  { level: 10, small: 2_000, big: 4_000, chips: null },
+  { level: 1, small: 5, big: 10, chips: 2_000, exchange: null },
+  { level: 2, small: 10, big: 20, chips: 3_000, exchange: "收回 5 面额筹码" },
+  { level: 3, small: 20, big: 40, chips: 4_500, exchange: null },
+  { level: 4, small: 30, big: 60, chips: 5_000, exchange: null },
+  { level: 5, small: 50, big: 100, chips: 6_000, exchange: null },
+  { level: 6, small: 70, big: 140, chips: 6_500, exchange: null },
+  { level: 7, small: 100, big: 200, chips: 7_000, exchange: "收回 10、20 面额筹码" },
+  { level: 8, small: 150, big: 300, chips: null, exchange: null },
+  { level: 9, small: 200, big: 400, chips: null, exchange: null },
+  { level: 10, small: 300, big: 600, chips: null, exchange: null },
 ] as const;
 
 export function placementScore(playerCount: number, rank: number) {

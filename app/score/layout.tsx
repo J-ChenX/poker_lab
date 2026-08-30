@@ -1,4 +1,10 @@
 import type { Metadata } from "next";
+import "@fontsource/noto-sans-sc/chinese-simplified-400.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-500.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-600.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-700.css";
+import "@fontsource/noto-serif-sc/chinese-simplified-500.css";
+import "@fontsource/noto-serif-sc/chinese-simplified-600.css";
 
 export const metadata: Metadata = {
   title: "牌桌积分簿｜德州扑克电子记分系统",
