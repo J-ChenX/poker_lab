@@ -2,30 +2,22 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLIND_LEVELS, reviveCost } from "../score/rules";
+import DisplayControlPanel, { DisplayScoreAction, DisplaySharedState } from "./control-panel";
 import styles from "./display.module.css";
-
-type Player = { name: string; score: number };
-type SharedState = {
-  players: Player[];
-  playerCount: number;
-  currentLevel: number;
-  rankedPlayers: string[];
-  version: number;
-  initialized: boolean;
-};
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN");
 
 export default function DisplayPage() {
-  const [state, setState] = useState<SharedState | null>(null);
+  const [state, setState] = useState<DisplaySharedState | null>(null);
   const [connected, setConnected] = useState(true);
-  const [advancing, setAdvancing] = useState(false);
+  const [mutating, setMutating] = useState(false);
+  const [controlOpen, setControlOpen] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
       const response = await fetch("/api/score-state", { cache: "no-store" });
       if (!response.ok) throw new Error("读取失败");
-      const next = await response.json() as SharedState;
+      const next = await response.json() as DisplaySharedState;
       setState((current) => !current || next.version >= current.version ? next : current);
       setConnected(true);
     } catch {
@@ -50,39 +42,44 @@ export default function DisplayPage() {
   const blind = BLIND_LEVELS[currentLevel - 1] ?? BLIND_LEVELS[0];
   const cost = reviveCost(playerCount, currentLevel);
 
-  const advanceLevel = async () => {
-    if (!state || state.currentLevel >= BLIND_LEVELS.length || advancing) return;
-    setAdvancing(true);
+  const mutateState = useCallback(async (action: DisplayScoreAction) => {
+    if (mutating) return false;
+    setMutating(true);
     try {
       const response = await fetch("/api/score-state", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          type: "setGame",
-          playerCount: state.playerCount,
-          currentLevel: state.currentLevel + 1,
-          rankedPlayers: state.rankedPlayers,
-        }),
+        body: JSON.stringify(action),
       });
       if (!response.ok) throw new Error("更新失败");
-      setState(await response.json() as SharedState);
+      setState(await response.json() as DisplaySharedState);
       setConnected(true);
+      return true;
     } catch {
       setConnected(false);
+      return false;
     } finally {
-      setAdvancing(false);
+      setMutating(false);
     }
+  }, [mutating]);
+
+  const advanceLevel = () => {
+    if (!state || state.currentLevel >= BLIND_LEVELS.length || mutating) return;
+    void mutateState({ type: "setGame", playerCount: state.playerCount, currentLevel: state.currentLevel + 1, rankedPlayers: state.rankedPlayers });
   };
 
   return <main className={styles.screen}>
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
       <div className={styles.connection}><i className={connected ? styles.online : styles.offline} /><span>{connected ? "与手机同步中" : "等待网络恢复"}</span></div>
-      <button className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || advancing}>
-        <span>{currentLevel >= BLIND_LEVELS.length ? "最高等级" : "下一等级"}</span>
-        <strong>{currentLevel >= BLIND_LEVELS.length ? "L10" : `L${currentLevel + 1}`}</strong>
-        <i aria-hidden="true">→</i>
-      </button>
+      <div className={styles.headerControls}>
+        <button className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || mutating}>
+          <span>{currentLevel >= BLIND_LEVELS.length ? "最高等级" : "下一等级"}</span>
+          <strong>{currentLevel >= BLIND_LEVELS.length ? "L10" : `L${currentLevel + 1}`}</strong>
+          <i aria-hidden="true">→</i>
+        </button>
+        <button className={styles.moreControls} type="button" aria-label="打开更多牌桌控制" aria-haspopup="dialog" aria-expanded={controlOpen} disabled={!state} onClick={() => setControlOpen(true)}><span>牌桌控制</span><b aria-hidden="true">•••</b></button>
+      </div>
     </header>
 
     <section className={styles.dashboard}>
@@ -114,5 +111,6 @@ export default function DisplayPage() {
         </div>
       </section>
     </section>
+    {controlOpen && state && <DisplayControlPanel state={state} busy={mutating} onClose={() => setControlOpen(false)} onMutate={mutateState} />}
   </main>;
 }
