@@ -18,8 +18,52 @@ export type DisplayScoreAction =
   | { type: "addScores"; changes: { name: string; amount: number }[]; clearRanks?: boolean };
 
 type ActionMode = "knockout" | "revive" | null;
+type RemoteDirection = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN");
+const remoteFocusableSelector = "button:not(:disabled), select:not(:disabled), [tabindex='0']";
+
+function moveRemoteFocus(container: HTMLElement, direction: RemoteDirection) {
+  const focusable = Array.from(container.querySelectorAll<HTMLElement>(remoteFocusableSelector)).filter((element) => {
+    const rect = element.getBoundingClientRect();
+    return rect.width > 0 && rect.height > 0 && window.getComputedStyle(element).visibility !== "hidden";
+  });
+  if (!focusable.length) return;
+
+  const active = document.activeElement instanceof HTMLElement && container.contains(document.activeElement)
+    ? document.activeElement
+    : null;
+  if (!active) {
+    focusable[0].focus();
+    return;
+  }
+
+  const source = active.getBoundingClientRect();
+  const sourceX = source.left + source.width / 2;
+  const sourceY = source.top + source.height / 2;
+  const horizontal = direction === "ArrowLeft" || direction === "ArrowRight";
+  const sign = direction === "ArrowLeft" || direction === "ArrowUp" ? -1 : 1;
+  let target: HTMLElement | null = null;
+  let bestScore = Number.POSITIVE_INFINITY;
+
+  for (const candidate of focusable) {
+    if (candidate === active) continue;
+    const rect = candidate.getBoundingClientRect();
+    const deltaX = rect.left + rect.width / 2 - sourceX;
+    const deltaY = rect.top + rect.height / 2 - sourceY;
+    const primary = (horizontal ? deltaX : deltaY) * sign;
+    if (primary <= 2) continue;
+    const secondary = Math.abs(horizontal ? deltaY : deltaX);
+    const score = primary + secondary * 1.8;
+    if (score < bestScore) {
+      bestScore = score;
+      target = candidate;
+    }
+  }
+
+  target?.focus({ preventScroll: true });
+  target?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+}
 
 function RankPlayerSelect({ value, players, unavailableNames, label, disabled, onChange }: {
   value: string;
@@ -31,6 +75,13 @@ function RankPlayerSelect({ value, players, unavailableNames, label, disabled, o
 }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  const closeMenu = (restoreFocus = true) => {
+    setOpen(false);
+    if (restoreFocus) window.requestAnimationFrame(() => triggerRef.current?.focus());
+  };
 
   useEffect(() => {
     if (!open) return;
@@ -41,17 +92,32 @@ function RankPlayerSelect({ value, players, unavailableNames, label, disabled, o
     return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+    window.requestAnimationFrame(() => menuRef.current?.querySelector<HTMLElement>(remoteFocusableSelector)?.focus());
+  }, [open]);
+
   return <div className={styles.rankPlayerSelect} ref={rootRef}>
-    <button className={`${styles.rankSelectTrigger} ${open ? styles.rankSelectTriggerOpen : ""} ${value ? styles.rankSelectTriggerFilled : ""}`} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+    <button ref={triggerRef} className={`${styles.rankSelectTrigger} ${open ? styles.rankSelectTriggerOpen : ""} ${value ? styles.rankSelectTriggerFilled : ""}`} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => {
+      if (event.key === "Escape" && open) {
+        event.stopPropagation();
+        closeMenu();
+      }
+    }}>
       <span>{value ? <><i>{value.slice(0, 2).toUpperCase()}</i><b>{value}</b></> : <b>{players.length ? "选择牌手" : "暂无牌手"}</b>}</span>
       <em aria-hidden="true">⌄</em>
     </button>
-    {open && <div className={styles.rankSelectMenu} role="listbox" aria-label={label} tabIndex={-1} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
-      {value && <button className={styles.rankClearOption} type="button" onClick={() => { onChange(""); setOpen(false); }}><span>清除选择</span><small>×</small></button>}
+    {open && <div ref={menuRef} className={styles.rankSelectMenu} role="listbox" aria-label={label} tabIndex={-1} onKeyDown={(event) => {
+      if (event.key === "Escape") {
+        event.stopPropagation();
+        closeMenu();
+      }
+    }}>
+      {value && <button className={styles.rankClearOption} type="button" onClick={() => { onChange(""); closeMenu(); }}><span>清除选择</span><small>×</small></button>}
       {players.map((player) => {
         const unavailable = unavailableNames.has(player.name);
         const selected = player.name === value;
-        return <button className={selected ? styles.rankOptionSelected : ""} type="button" role="option" aria-selected={selected} disabled={unavailable} key={player.name} onClick={() => { onChange(player.name); setOpen(false); }}><i>{player.name.slice(0, 2).toUpperCase()}</i><span><strong>{player.name}</strong><small>{unavailable ? "已用于其他名次" : selected ? "当前选择" : `${player.score > 0 ? "+" : ""}${player.score} 分`}</small></span><b>{selected ? "✓" : ""}</b></button>;
+        return <button className={selected ? styles.rankOptionSelected : ""} type="button" role="option" aria-selected={selected} disabled={unavailable} key={player.name} onClick={() => { onChange(player.name); closeMenu(); }}><i>{player.name.slice(0, 2).toUpperCase()}</i><span><strong>{player.name}</strong><small>{unavailable ? "已用于其他名次" : selected ? "当前选择" : `${player.score > 0 ? "+" : ""}${player.score} 分`}</small></span><b>{selected ? "✓" : ""}</b></button>;
       })}
     </div>}
   </div>;
@@ -67,6 +133,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   const [revivePlayer, setRevivePlayer] = useState("");
   const [knockoutWinners, setKnockoutWinners] = useState<string[]>([]);
   const [notice, setNotice] = useState("");
+  const panelRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
@@ -78,6 +145,10 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
       window.removeEventListener("keydown", closeOnEscape);
     };
   }, [onClose]);
+
+  useEffect(() => {
+    window.requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>(`.${styles.controlSelected}`)?.focus());
+  }, []);
 
   useEffect(() => {
     setKnockoutWinners((current) => current.filter((name) => state.players.some((player) => player.name === name)));
@@ -148,7 +219,19 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   };
 
   return <div className={styles.controlBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <aside className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title" onKeyDown={(event) => event.key === "Escape" && onClose()}>
+    <aside ref={panelRef} className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title" onKeyDown={(event) => {
+      if (event.key === "Escape") return onClose();
+      const active = document.activeElement;
+      if (event.key === "Enter" && active instanceof HTMLButtonElement && panelRef.current?.contains(active)) {
+        event.preventDefault();
+        active.click();
+        return;
+      }
+      if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
+      if (active instanceof HTMLSelectElement) return;
+      event.preventDefault();
+      if (panelRef.current) moveRemoteFocus(panelRef.current, event.key as RemoteDirection);
+    }}>
       <header className={styles.controlHead}>
         <div><h2 id="display-control-title">牌桌控制</h2></div>
       </header>

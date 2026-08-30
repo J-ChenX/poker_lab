@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BLIND_LEVELS, knockoutBase, placementScore, reviveCost, scoringPlaceCount } from "../score/rules";
 import DisplayControlPanel, { DisplayScoreAction, DisplaySharedState } from "./control-panel";
 import styles from "./display.module.css";
@@ -11,6 +11,7 @@ export default function DisplayPage() {
   const [state, setState] = useState<DisplaySharedState | null>(null);
   const [mutating, setMutating] = useState(false);
   const [controlOpen, setControlOpen] = useState(false);
+  const advanceLevelRef = useRef<HTMLButtonElement>(null);
 
   const refresh = useCallback(async () => {
     try {
@@ -35,13 +36,20 @@ export default function DisplayPage() {
   }, [refresh]);
 
   useEffect(() => {
-    const openControlsFromRemote = (event: KeyboardEvent) => {
-      if (event.key !== "ArrowRight" || !state || controlOpen) return;
-      event.preventDefault();
-      setControlOpen(true);
+    const handleRemoteKey = (event: KeyboardEvent) => {
+      if (!state || controlOpen) return;
+      if (event.key === "ArrowRight") {
+        event.preventDefault();
+        setControlOpen(true);
+        return;
+      }
+      if (["ArrowUp", "ArrowDown", "ArrowLeft"].includes(event.key)) {
+        event.preventDefault();
+        advanceLevelRef.current?.focus();
+      }
     };
-    window.addEventListener("keydown", openControlsFromRemote);
-    return () => window.removeEventListener("keydown", openControlsFromRemote);
+    window.addEventListener("keydown", handleRemoteKey);
+    return () => window.removeEventListener("keydown", handleRemoteKey);
   }, [controlOpen, state]);
 
   const sortedPlayers = useMemo(() => [...(state?.players ?? [])].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-CN")), [state?.players]);
@@ -82,7 +90,7 @@ export default function DisplayPage() {
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
       <div className={styles.headerControls}>
-        <button className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || mutating}>
+        <button ref={advanceLevelRef} className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || mutating}>
           <span>{currentLevel >= BLIND_LEVELS.length ? "最高等级" : "下一等级"}</span>
           <strong>{currentLevel >= BLIND_LEVELS.length ? "L10" : `L${currentLevel + 1}`}</strong>
           <i aria-hidden="true">→</i>
