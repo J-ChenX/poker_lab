@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { BLIND_LEVELS, reviveCost } from "../score/rules";
+import { BLIND_LEVELS, knockoutBase, placementScore, reviveCost, scoringPlaceCount } from "../score/rules";
 import DisplayControlPanel, { DisplayScoreAction, DisplaySharedState } from "./control-panel";
 import styles from "./display.module.css";
 
@@ -9,7 +9,6 @@ const formatNumber = (value: number) => value.toLocaleString("zh-CN");
 
 export default function DisplayPage() {
   const [state, setState] = useState<DisplaySharedState | null>(null);
-  const [connected, setConnected] = useState(true);
   const [mutating, setMutating] = useState(false);
   const [controlOpen, setControlOpen] = useState(false);
 
@@ -19,9 +18,8 @@ export default function DisplayPage() {
       if (!response.ok) throw new Error("读取失败");
       const next = await response.json() as DisplaySharedState;
       setState((current) => !current || next.version >= current.version ? next : current);
-      setConnected(true);
     } catch {
-      setConnected(false);
+      // 网络恢复后下一次轮询会自动补上最新状态。
     }
   }, []);
 
@@ -41,6 +39,8 @@ export default function DisplayPage() {
   const currentLevel = state?.currentLevel ?? 1;
   const blind = BLIND_LEVELS[currentLevel - 1] ?? BLIND_LEVELS[0];
   const cost = reviveCost(playerCount, currentLevel);
+  const placementValues = Array.from({ length: scoringPlaceCount(playerCount) }, (_, index) => placementScore(playerCount, index + 1));
+  const knockoutValue = knockoutBase(playerCount);
 
   const mutateState = useCallback(async (action: DisplayScoreAction) => {
     if (mutating) return false;
@@ -53,10 +53,8 @@ export default function DisplayPage() {
       });
       if (!response.ok) throw new Error("更新失败");
       setState(await response.json() as DisplaySharedState);
-      setConnected(true);
       return true;
     } catch {
-      setConnected(false);
       return false;
     } finally {
       setMutating(false);
@@ -68,10 +66,9 @@ export default function DisplayPage() {
     void mutateState({ type: "setGame", playerCount: state.playerCount, currentLevel: state.currentLevel + 1, rankedPlayers: state.rankedPlayers });
   };
 
-  return <main className={styles.screen}>
+  return <main className={`${styles.screen} ${controlOpen ? styles.panelOpen : ""}`}>
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
-      <div className={styles.connection}><i className={connected ? styles.online : styles.offline} /><span>{connected ? "与手机同步中" : "等待网络恢复"}</span></div>
       <div className={styles.headerControls}>
         <button className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || mutating}>
           <span>{currentLevel >= BLIND_LEVELS.length ? "最高等级" : "下一等级"}</span>
@@ -96,7 +93,11 @@ export default function DisplayPage() {
         <div className={styles.levelCard}>
           <div><span>当前轮次</span><small>CURRENT LEVEL</small></div>
           <strong>L{currentLevel}</strong>
-          <p><b>{playerCount}</b> 人开局</p>
+          <p className={styles.playerMeta}>
+            <span><b>{playerCount}</b> 人开局</span>
+            <small><i>名次积分</i>{placementValues.join(" / ")}</small>
+            <small><i>淘汰积分</i>＋{knockoutValue}</small>
+          </p>
         </div>
 
         <div className={styles.blindGrid}>

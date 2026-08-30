@@ -5,11 +5,13 @@
   --lime: #c8f15a;
   min-width: 320px;
   min-height: 100vh;
+  width: 100%;
   padding: 0 3vw 3vh;
   color: var(--ink);
   background: radial-gradient(circle at 64% -20%, #174d39 0, #0b271d 38%, #071812 78%);
   font-family: "Noto Sans SC", sans-serif;
   font-variant-numeric: tabular-nums;
+  transition: width .28s cubic-bezier(.22, .8, .25, 1), padding .28s cubic-bezier(.22, .8, .25, 1);
 }
 
 .screen * { box-sizing: border-box; }
@@ -18,22 +20,18 @@
 .header {
   min-height: 82px;
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 24px;
   border-bottom: 1px solid rgb(191 225 205 / 16%);
 }
 
-.brand, .connection { display: flex; align-items: center; }
+.brand { display: flex; align-items: center; }
 .brand { gap: 13px; }
 .brand > span { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; color: #092419; background: var(--lime); font-size: 20px; }
 .brand div { display: flex; flex-direction: column; gap: 2px; }
 .brand strong { font-size: 15px; letter-spacing: .08em; }
 .brand small { color: var(--muted); font-size: 8px; letter-spacing: .17em; }
-.connection { gap: 10px; color: #c8d8cf; font-size: 12px; }
-.connection i { width: 8px; height: 8px; border-radius: 50%; }
-.online { background: #59df91; box-shadow: 0 0 0 5px rgb(89 223 145 / 14%); }
-.offline { background: #dc625b; box-shadow: 0 0 0 5px rgb(220 98 91 / 14%); }
 .headerControls { justify-self: end; display: flex; align-items: stretch; gap: 8px; }
 .advanceLevel {
   min-width: 158px;
@@ -144,8 +142,11 @@
 .levelCard span, .reviveCard > div span, .blindGrid article span { font-size: clamp(14px, 1.15vw, 22px); font-weight: 700; }
 .levelCard small, .reviveCard > div small, .blindGrid article > div small { margin-top: .4vh; color: #91c5aa; font-size: clamp(8px, .58vw, 11px); letter-spacing: .18em; }
 .levelCard > strong { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: clamp(68px, 8.2vw, 148px); line-height: .9; text-shadow: 0 12px 32px rgb(0 0 0 / 18%); }
-.levelCard > p { justify-self: end; margin: 0; color: #c0dacd; font-size: clamp(13px, 1.2vw, 22px); }
-.levelCard > p b { color: #fff; font-size: 1.7em; }
+.playerMeta { min-width: 155px; justify-self: end; margin: 0; display: flex; flex-direction: column; align-items: flex-end; color: #c0dacd; }
+.playerMeta > span { font-size: clamp(13px, 1.2vw, 22px); }
+.playerMeta > span b { color: #fff; font-size: 1.7em; }
+.playerMeta > small { margin-top: 5px; display: flex; align-items: center; gap: 8px; color: #e4efe9; font-size: clamp(9px, .68vw, 12px); white-space: nowrap; }
+.playerMeta > small i { min-width: 48px; color: #83a293; font-size: .88em; font-style: normal; letter-spacing: .06em; text-align: right; }
 
 .blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5vw; }
 .blindGrid article {
@@ -188,21 +189,32 @@
   inset: 0;
   display: flex;
   justify-content: flex-end;
-  background: rgb(1 10 7 / 72%);
-  backdrop-filter: blur(7px);
+  background: transparent;
   animation: backdropIn .16s ease-out;
 }
 .controlPanel {
-  width: min(760px, 94vw);
+  width: clamp(680px, 40vw, 800px);
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
   border-left: 1px solid rgb(200 241 90 / 22%);
   background: linear-gradient(155deg, #0d3024, #071c15 65%, #061611);
-  box-shadow: -32px 0 80px rgb(0 0 0 / 38%);
+  box-shadow: -20px 0 52px rgb(0 0 0 / 26%);
   animation: panelIn .2s ease-out;
 }
+.panelOpen { width: calc(100% - clamp(680px, 40vw, 800px)); padding-inline: 14px; overflow: hidden; }
+.panelOpen .header { grid-template-columns: 1fr auto; }
+.panelOpen .brand small { display: none; }
+.panelOpen .headerControls { gap: 6px; }
+.panelOpen .moreControls { display: none; }
+.panelOpen .advanceLevel { min-width: 136px; }
+.panelOpen .dashboard { grid-template-columns: minmax(0, 1fr); gap: 0; }
+.panelOpen .ranking { display: none; }
+.panelOpen .gameState { min-height: calc(100vh - 110px); grid-template-rows: .72fr 1.18fr .8fr; }
+.panelOpen .levelCard { padding-inline: 2.2vw; }
+.panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
+.panelOpen .blindGrid article > strong { font-size: clamp(70px, 8vw, 124px); }
 .controlHead {
   min-height: 112px;
   padding: 22px 26px;
@@ -278,11 +290,12 @@
 @media (max-width: 900px) {
   .screen { padding-inline: 18px; }
   .header { grid-template-columns: 1fr auto; }
-  .connection { display: none; }
   .dashboard { grid-template-columns: 1fr; }
   .ranking { padding: 18px; }
   .playerList { grid-template-columns: 1fr 1fr; }
   .gameState { min-height: 680px; }
+  .panelOpen { width: 100%; padding-inline: 18px; }
+  .panelOpen .dashboard { grid-template-columns: 1fr; }
 }
 
 @media (max-width: 560px) {
@@ -302,7 +315,10 @@
   .playerList article { min-height: 60px; padding: 8px; grid-template-columns: 25px 38px minmax(0, 1fr) auto; gap: 8px; }
   .gameState { min-height: 620px; grid-template-rows: .62fr 1.25fr 1fr; }
   .levelCard { padding: 16px; grid-template-columns: 1fr auto; }
-  .levelCard > p { display: none; }
+  .playerMeta { min-width: 122px; }
+  .playerMeta > span { font-size: 12px; }
+  .playerMeta > small { gap: 5px; font-size: 8px; }
+  .playerMeta > small i { min-width: 40px; }
   .blindGrid { gap: 8px; }
   .blindGrid article { padding: 14px; }
   .blindGrid article > strong { font-size: clamp(40px, 13vw, 68px); }
