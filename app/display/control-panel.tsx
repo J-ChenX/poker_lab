@@ -148,10 +148,9 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   };
 
   return <div className={styles.controlBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <aside className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title">
+    <aside className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title" onKeyDown={(event) => event.key === "Escape" && onClose()}>
       <header className={styles.controlHead}>
         <div><h2 id="display-control-title">牌桌控制</h2></div>
-        <button type="button" onClick={onClose} aria-label="关闭牌桌控制">×</button>
       </header>
 
       <div className={styles.controlBody}>
