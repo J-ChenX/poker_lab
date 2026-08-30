@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
-import { readFile, readdir } from "node:fs/promises";
-import { join } from "node:path";
+import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
 
@@ -69,15 +68,19 @@ test("电视 APK 页面不包含旧 WebView 无法解析的首屏语法", async 
   assert.match(html, /setAttribute\("data-tv-app",\s*"1"\)/);
 });
 
-test("电视 APK 构建保留旧 WebView 的大字号规则", async () => {
-  const clientDirectory = fileURLToPath(new URL("../dist/client", import.meta.url));
-  const files = await readdir(clientDirectory, { recursive: true });
-  const stylesheets = await Promise.all(
-    files.filter((file) => file.endsWith(".css")).map((file) => readFile(join(clientDirectory, file), "utf8")),
+test("电视 APK 为旧 WebView 保留原生像素看板与内置字体", async () => {
+  const source = await readFile(
+    fileURLToPath(new URL("../android-tv/app/src/main/java/com/pokerlab/tv/MainActivity.java", import.meta.url)),
+    "utf8",
   );
-  const css = stylesheets.join("\n");
-  assert.match(css, /data-tv-app[^}]+levelCard[^}]+font-size:148px/);
-  assert.match(css, /data-tv-app[^}]+blindGrid[^}]+font-size:145px/);
+  const serifFont = await readFile(
+    fileURLToPath(new URL("../android-tv/app/src/main/assets/fonts/noto-serif-sc-display.ttf", import.meta.url)),
+  );
+  assert.match(source, /createNativeDashboard\(boolean compact\)/);
+  assert.match(source, /compact \? px\(768\)/);
+  assert.match(source, /displaySerif/);
+  assert.match(source, /main\.postDelayed\(this, 2500\)/);
+  assert.ok(serifFont.byteLength > 10_000);
 });
 
 test("旧的 /score 路径不再兼容", async () => {

@@ -10,8 +10,8 @@ android {
         applicationId = "com.pokerlab.tv"
         minSdk = 21
         targetSdk = 36
-        versionCode = 7
-        versionName = "2.4.0"
+        versionCode = 9
+        versionName = "2.5.0"
     }
 
     buildTypes {
