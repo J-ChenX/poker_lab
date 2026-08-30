@@ -173,17 +173,15 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
     window.requestAnimationFrame(() => panelRef.current?.querySelector<HTMLElement>(`.${styles.controlSelected}`)?.focus());
   }, []);
 
-  useEffect(() => {
-    setKnockoutWinners((current) => current.filter((name) => state.players.some((player) => player.name === name)));
-    if (revivePlayer && !state.players.some((player) => player.name === revivePlayer)) setRevivePlayer("");
-  }, [revivePlayer, state.players]);
-
   const paidPlaces = scoringPlaceCount(state.playerCount);
   const selectedRanks = state.rankedPlayers.filter(Boolean);
   const currentBlind = BLIND_LEVELS[state.currentLevel - 1] ?? BLIND_LEVELS[0];
   const unitReviveCost = reviveCost(state.playerCount, state.currentLevel);
   const knockoutUnit = knockoutBase(state.playerCount);
-  const knockoutPoints = knockoutShare(state.playerCount, knockoutWinners.length || 1);
+  const activePlayerNames = useMemo(() => new Set(state.players.map((player) => player.name)), [state.players]);
+  const activeKnockoutWinners = useMemo(() => knockoutWinners.filter((name) => activePlayerNames.has(name)), [activePlayerNames, knockoutWinners]);
+  const activeRevivePlayer = activePlayerNames.has(revivePlayer) ? revivePlayer : "";
+  const knockoutPoints = knockoutShare(state.playerCount, activeKnockoutWinners.length || 1);
   const sortedPlayers = useMemo(() => [...state.players].sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "zh-CN")), [state.players]);
 
   useEffect(() => {
@@ -235,12 +233,15 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   };
 
   const toggleKnockoutWinner = (name: string) => {
-    setKnockoutWinners((current) => current.includes(name) ? current.filter((item) => item !== name) : [...current, name]);
+    setKnockoutWinners((current) => {
+      const active = current.filter((item) => activePlayerNames.has(item));
+      return active.includes(name) ? active.filter((item) => item !== name) : [...active, name];
+    });
   };
 
   const applyKnockout = async () => {
-    if (!knockoutWinners.length) return setNotice("请至少选择一位淘汰得分人员");
-    const ok = await onMutate({ type: "addScores", changes: knockoutWinners.map((name) => ({ name, amount: knockoutPoints })) });
+    if (!activeKnockoutWinners.length) return setNotice("请至少选择一位淘汰得分人员");
+    const ok = await onMutate({ type: "addScores", changes: activeKnockoutWinners.map((name) => ({ name, amount: knockoutPoints })) });
     if (ok) {
       setKnockoutWinners([]);
       setActionMode(null);
@@ -249,9 +250,9 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   };
 
   const applyRevive = async () => {
-    if (!revivePlayer) return setNotice("请选择复活人员");
+    if (!activeRevivePlayer) return setNotice("请选择复活人员");
     if (!unitReviveCost) return setNotice("当前人数或等级不可复活");
-    const ok = await onMutate({ type: "addScores", changes: [{ name: revivePlayer, amount: -unitReviveCost }] });
+    const ok = await onMutate({ type: "addScores", changes: [{ name: activeRevivePlayer, amount: -unitReviveCost }] });
     if (ok) {
       setRevivePlayer("");
       setActionMode(null);
@@ -259,13 +260,15 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
     }
   };
 
-  return <div className={styles.controlBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
-    <aside ref={panelRef} className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title" onKeyDown={(event) => {
+  useEffect(() => {
+    const panel = panelRef.current;
+    if (!panel) return;
+    const handleRemoteKey = (event: KeyboardEvent) => {
       if (event.key === "Escape") return onClose();
       const active = document.activeElement;
-      if (event.key === "Enter" && active instanceof HTMLButtonElement && panelRef.current?.contains(active)) {
+      if (event.key === "Enter" && active instanceof HTMLButtonElement && panel.contains(active)) {
         event.preventDefault();
-        const focusable = getRemoteFocusable(panelRef.current);
+        const focusable = getRemoteFocusable(panel);
         const owner = active.dataset.tvKey
           ? active
           : active.closest(`.${styles.rankPlayerSelect}`)?.querySelector<HTMLElement>("[data-tv-key]") ?? active;
@@ -276,32 +279,38 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
       if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
       if (active instanceof HTMLSelectElement) return;
       event.preventDefault();
-      if (!panelRef.current) return;
       if (event.key === "ArrowRight" && active instanceof HTMLElement && active.dataset.tvKey === "action-knockout") {
-        const reviveAction = panelRef.current.querySelector<HTMLElement>("[data-tv-key='action-revive']:not(:disabled)");
+        const reviveAction = panel.querySelector<HTMLElement>("[data-tv-key='action-revive']:not(:disabled)");
         if (reviveAction) {
           reviveAction.focus({ preventScroll: true });
           return;
         }
       }
       if (event.key === "ArrowLeft" && active instanceof HTMLElement && active.dataset.tvKey === "action-revive") {
-        const knockoutAction = panelRef.current.querySelector<HTMLElement>("[data-tv-key='action-knockout']:not(:disabled)");
+        const knockoutAction = panel.querySelector<HTMLElement>("[data-tv-key='action-knockout']:not(:disabled)");
         if (knockoutAction) {
           knockoutAction.focus({ preventScroll: true });
           return;
         }
       }
       if (event.key === "ArrowDown" && active instanceof HTMLElement && Number(active.dataset.tvLevel) >= 6) {
-        const firstRank = panelRef.current.querySelector<HTMLElement>("[data-tv-target='rank']:not(:disabled)");
+        const firstRank = panel.querySelector<HTMLElement>("[data-tv-target='rank']:not(:disabled)");
         if (firstRank) {
           firstRank.focus({ preventScroll: true });
           firstRank.scrollIntoView({ block: "nearest", behavior: "smooth" });
           return;
         }
       }
-      const moved = moveRemoteFocus(panelRef.current, event.key as RemoteDirection);
+      const moved = moveRemoteFocus(panel, event.key as RemoteDirection);
       if (!moved && event.key === "ArrowLeft") onClose();
-    }}>
+    };
+    panel.addEventListener("keydown", handleRemoteKey);
+    return () => panel.removeEventListener("keydown", handleRemoteKey);
+  }, [onClose]);
+
+  return <div className={styles.controlBackdrop}>
+    <button className={styles.backdropDismiss} type="button" tabIndex={-1} aria-label="关闭牌桌控制" onClick={onClose} />
+    <aside ref={panelRef} className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title">
       <header className={styles.controlHead}>
         <div><h2 id="display-control-title">牌桌控制</h2></div>
       </header>
@@ -342,8 +351,8 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
             <button data-tv-key="action-revive" className={actionMode === "revive" ? styles.controlSelected : ""} type="button" disabled={!state.players.length || !unitReviveCost} onClick={() => { setActionMode(actionMode === "revive" ? null : "revive"); setNotice(""); }}><i>↻</i><span><b>复活扣分</b><small>{unitReviveCost ? `单次 −${unitReviveCost} 分` : "当前不可复活"}</small></span></button>
           </div>
 
-          {actionMode === "knockout" && <div className={styles.actionEditor}><p>选择一位或多位得分人员；多人共同淘汰时，每人获得 ＋{knockoutPoints} 分。</p><div className={styles.playerChips}>{sortedPlayers.map((player, index) => <button data-tv-key={`knockout-player-${index + 1}`} className={knockoutWinners.includes(player.name) ? styles.controlSelected : ""} type="button" disabled={busy} key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{knockoutWinners.includes(player.name) ? `＋${knockoutPoints}` : "选择"}</small></button>)}</div><button data-tv-key="confirm-knockout" className={styles.actionConfirm} type="button" disabled={busy || !knockoutWinners.length} onClick={applyKnockout}>确认淘汰加分</button></div>}
-          {actionMode === "revive" && <div className={styles.actionEditor}><p>L{state.currentLevel} 单次复活扣除 {unitReviveCost} 分，并获得 {formatNumber(currentBlind.chips ?? 0)} 筹码。</p><RankPlayerSelect value={revivePlayer} players={sortedPlayers} unavailableNames={noUnavailablePlayers} label="选择复活人员" placeholder="选择复活人员" remoteTarget="revive" remoteKey="revive-player" disabled={busy} onChange={setRevivePlayer} /><button data-tv-key="confirm-revive" className={styles.actionConfirm} type="button" disabled={busy || !revivePlayer} onClick={applyRevive}>确认一次复活扣分</button></div>}
+          {actionMode === "knockout" && <div className={styles.actionEditor}><p>选择一位或多位得分人员；多人共同淘汰时，每人获得 ＋{knockoutPoints} 分。</p><div className={styles.playerChips}>{sortedPlayers.map((player, index) => <button data-tv-key={`knockout-player-${index + 1}`} className={activeKnockoutWinners.includes(player.name) ? styles.controlSelected : ""} type="button" disabled={busy} key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{activeKnockoutWinners.includes(player.name) ? `＋${knockoutPoints}` : "选择"}</small></button>)}</div><button data-tv-key="confirm-knockout" className={styles.actionConfirm} type="button" disabled={busy || !activeKnockoutWinners.length} onClick={applyKnockout}>确认淘汰加分</button></div>}
+          {actionMode === "revive" && <div className={styles.actionEditor}><p>L{state.currentLevel} 单次复活扣除 {unitReviveCost} 分，并获得 {formatNumber(currentBlind.chips ?? 0)} 筹码。</p><RankPlayerSelect value={activeRevivePlayer} players={sortedPlayers} unavailableNames={noUnavailablePlayers} label="选择复活人员" placeholder="选择复活人员" remoteTarget="revive" remoteKey="revive-player" disabled={busy} onChange={setRevivePlayer} /><button data-tv-key="confirm-revive" className={styles.actionConfirm} type="button" disabled={busy || !activeRevivePlayer} onClick={applyRevive}>确认一次复活扣分</button></div>}
         </section>
       </div>
     </aside>

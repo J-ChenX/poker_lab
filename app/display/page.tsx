@@ -25,11 +25,12 @@ export default function DisplayPage() {
   }, []);
 
   useEffect(() => {
-    void refresh();
+    const initialFrame = window.requestAnimationFrame(() => void refresh());
     const timer = window.setInterval(() => void refresh(), 2000);
     const onVisibilityChange = () => document.visibilityState === "visible" && void refresh();
     document.addEventListener("visibilitychange", onVisibilityChange);
     return () => {
+      window.cancelAnimationFrame(initialFrame);
       window.clearInterval(timer);
       document.removeEventListener("visibilitychange", onVisibilityChange);
     };

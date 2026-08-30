@@ -185,7 +185,16 @@
   background: transparent;
   animation: backdropIn .16s ease-out;
 }
+.backdropDismiss {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: transparent;
+  cursor: default;
+}
 .controlPanel {
+  position: relative;
+  z-index: 1;
   width: 60vw;
   height: 100vh;
   display: flex;
