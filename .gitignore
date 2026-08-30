@@ -43,3 +43,11 @@ yarn-error.log*
 /docx_render_check*/
 /build_poker_rules_manual.py
 *.tsbuildinfo
+
+# Android TV local build files
+/android-tv/.gradle/
+/android-tv/local.properties
+/android-tv/app/build/
+/android-tv/build/
+/android-tv/*.apk
+/android-tv/*.idsig
