@@ -80,7 +80,7 @@ public final class MainActivity extends Activity {
     private final NumberFormat numbers = NumberFormat.getIntegerInstance(Locale.CHINA);
     private final Runnable statePoll = new Runnable() {
         @Override public void run() {
-            refreshState(false);
+            refreshState(controlDialog != null && controlDialog.isShowing());
             main.postDelayed(this, 2500);
         }
     };
@@ -148,7 +148,7 @@ public final class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.5.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.6.0");
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
@@ -185,7 +185,7 @@ public final class MainActivity extends Activity {
         controlButton = new AdvanceButton();
         controlButton.setOnClickListener(view -> advanceLevelNatively());
         FrameLayout.LayoutParams advanceParams = new FrameLayout.LayoutParams(
-            px(79), px(24), Gravity.TOP | Gravity.END
+            px(135), px(36), Gravity.TOP | Gravity.END
         );
         advanceParams.topMargin = px(8);
         advanceParams.rightMargin = px(58);
@@ -202,7 +202,7 @@ public final class MainActivity extends Activity {
 
     private void loadDashboard() {
         setConnectionText("正在连接", false);
-        webView.loadUrl(baseUrl + "/display?tvapp=1&apk=2.5.0");
+        webView.loadUrl(baseUrl + "/display?tvapp=1&apk=2.6.0");
     }
 
     private void refreshState(boolean rebuildPanel) {
@@ -251,17 +251,17 @@ public final class MainActivity extends Activity {
         TextView rankingIndex = textPx("01", 6, LIME, false);
         rankingIndex.setGravity(Gravity.CENTER);
         rankingIndex.setBackground(roundedPx(Color.TRANSPARENT, 6, 1, Color.rgb(90, 128, 37)));
-        rankingHead.addView(rankingIndex, new LinearLayout.LayoutParams(px(12), px(12)));
+        rankingHead.addView(rankingIndex, new LinearLayout.LayoutParams(px(16), px(16)));
         TextView rankingTitle = textPx("实时积分排名", 16, TEXT, true);
         rankingTitle.setTypeface(displaySerif, android.graphics.Typeface.BOLD);
         rankingTitle.getPaint().setFakeBoldText(true);
-        LinearLayout.LayoutParams rankingTitleParams = new LinearLayout.LayoutParams(0, px(24), 1);
+        LinearLayout.LayoutParams rankingTitleParams = new LinearLayout.LayoutParams(0, px(32), 1);
         rankingTitleParams.leftMargin = px(8);
         rankingHead.addView(rankingTitle, rankingTitleParams);
         nativePlayerTotal = textPx("0 位牌手", 6, MUTED, false);
         nativePlayerTotal.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-        rankingHead.addView(nativePlayerTotal, new LinearLayout.LayoutParams(px(45), px(24)));
-        ranking.addView(rankingHead, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(24)));
+        rankingHead.addView(nativePlayerTotal, new LinearLayout.LayoutParams(px(60), px(32)));
+        ranking.addView(rankingHead, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(32)));
 
         ScrollView playerScroll = new ScrollView(this);
         playerScroll.setFillViewport(true);
@@ -338,7 +338,7 @@ public final class MainActivity extends Activity {
         revivalEn.setLetterSpacing(0.2f);
         reviveLabel.addView(revivalEn);
         reviveLabel.setPadding(px(42), 0, 0, 0);
-        reviveCard.addView(reviveLabel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(28)));
+        reviveCard.addView(reviveLabel, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(34)));
         LinearLayout reviveMetrics = row();
         reviveMetrics.setGravity(Gravity.FILL);
         nativeReviveCost = nativeReviveMetric(reviveMetrics, "本轮复活价格");
@@ -346,14 +346,14 @@ public final class MainActivity extends Activity {
         nativeNextReviveCost.setSingleLine(true);
         nativeNextReviveCost.setGravity(Gravity.CENTER_VERTICAL);
         ((ViewGroup) nativeReviveCost.getParent().getParent()).addView(nativeNextReviveCost, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, px(10)
+            ViewGroup.LayoutParams.MATCH_PARENT, px(15)
         ));
         nativeReviveChips = nativeReviveMetric(reviveMetrics, "复活筹码");
         nativeNextReviveChips = textPx("下一轮  —", 7, Color.rgb(137, 185, 160), false);
         nativeNextReviveChips.setSingleLine(true);
         nativeNextReviveChips.setGravity(Gravity.CENTER_VERTICAL);
         ((ViewGroup) nativeReviveChips.getParent().getParent()).addView(nativeNextReviveChips, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, px(10)
+            ViewGroup.LayoutParams.MATCH_PARENT, px(15)
         ));
         reviveCard.addView(reviveMetrics, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1));
         right.addView(reviveCard, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, compact ? 0.8f : 0.82f));
@@ -403,12 +403,13 @@ public final class MainActivity extends Activity {
         TextView labelView = textPx(label, 8, MUTED, false);
         labelView.setGravity(Gravity.CENTER_VERTICAL);
         metric.addView(labelView, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, px(12)
+            ViewGroup.LayoutParams.MATCH_PARENT, px(16)
         ));
         LinearLayout valueLine = row();
         TextView value = textPx("—", 36, TEXT, false);
         value.setTypeface(displaySerif, android.graphics.Typeface.NORMAL);
-        value.setIncludeFontPadding(true);
+        value.setIncludeFontPadding(false);
+        value.setGravity(Gravity.CENTER_VERTICAL);
         valueLine.addView(value);
         TextView unit = textPx(label.contains("价格") ? "分 / 次" : "筹码", 7, MUTED, false);
         unit.setSingleLine(true);
@@ -419,7 +420,7 @@ public final class MainActivity extends Activity {
         unitParams.leftMargin = px(4);
         valueLine.addView(unit, unitParams);
         metric.addView(valueLine, new LinearLayout.LayoutParams(
-            ViewGroup.LayoutParams.MATCH_PARENT, px(70)
+            ViewGroup.LayoutParams.MATCH_PARENT, px(82)
         ));
         LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
         parent.addView(metric, params);
@@ -474,12 +475,12 @@ public final class MainActivity extends Activity {
                 : roundedPx(PANEL_LIGHT, 6, 1, Color.rgb(49, 91, 70)));
             TextView rank = textPx(String.valueOf(index + 1), 8, index < 3 ? LIME : MUTED, true);
             rank.setGravity(Gravity.CENTER);
-            item.addView(rank, new LinearLayout.LayoutParams(px(16), ViewGroup.LayoutParams.MATCH_PARENT));
+            item.addView(rank, new LinearLayout.LayoutParams(px(20), ViewGroup.LayoutParams.MATCH_PARENT));
             String initials = player.name.substring(0, Math.min(2, player.name.length())).toUpperCase(Locale.CHINA);
             TextView avatar = textPx(initials, 6, TEXT, true);
             avatar.setGravity(Gravity.CENTER);
             avatar.setBackground(roundedPx(Color.rgb(22, 60, 45), 12, 0, Color.TRANSPARENT));
-            item.addView(avatar, new LinearLayout.LayoutParams(px(24), px(24)));
+            item.addView(avatar, new LinearLayout.LayoutParams(px(28), px(28)));
             LinearLayout identity = new LinearLayout(this);
             identity.setOrientation(LinearLayout.VERTICAL);
             identity.setGravity(Gravity.CENTER_VERTICAL);
@@ -495,8 +496,8 @@ public final class MainActivity extends Activity {
             TextView score = textPx(signed(player.score) + " 分", 16, player.score < 0 ? RED : LIME, false);
             score.setTypeface(displaySerif, android.graphics.Typeface.NORMAL);
             score.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-            item.addView(score, new LinearLayout.LayoutParams(px(36), ViewGroup.LayoutParams.MATCH_PARENT));
-            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(42));
+            item.addView(score, new LinearLayout.LayoutParams(px(60), ViewGroup.LayoutParams.MATCH_PARENT));
+            LinearLayout.LayoutParams itemParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(52));
             itemParams.bottomMargin = px(4);
             nativePlayerList.addView(item, itemParams);
         }
@@ -524,11 +525,11 @@ public final class MainActivity extends Activity {
         if (state != null) renderNativeDashboard(state);
 
         FrameLayout.LayoutParams advanceParams = (FrameLayout.LayoutParams) controlButton.getLayoutParams();
-        advanceParams.width = px(compact ? 76 : 79);
-        advanceParams.height = px(24);
+        advanceParams.width = px(135);
+        advanceParams.height = px(36);
         advanceParams.gravity = compact ? Gravity.TOP | Gravity.START : Gravity.TOP | Gravity.END;
         advanceParams.topMargin = px(8);
-        advanceParams.leftMargin = compact ? px(682) : 0;
+        advanceParams.leftMargin = compact ? px(623) : 0;
         advanceParams.rightMargin = compact ? 0 : px(58);
         controlButton.setLayoutParams(advanceParams);
         controlButton.bringToFront();
@@ -593,16 +594,16 @@ public final class MainActivity extends Activity {
             loading.setGravity(Gravity.CENTER);
             content.addView(loading, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(220)));
         } else {
-            content.addView(controlSectionTitle("本局开始人数", 12));
+            content.addView(controlSectionTitle("本局开始人数", 16));
             content.addView(playerCountGrid());
             content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("当前盲注等级", 12));
+            content.addView(controlSectionTitle("当前盲注等级", 16));
             content.addView(levelGrid());
             content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("计分名次", 12));
+            content.addView(controlSectionTitle("计分名次", 16));
             content.addView(rankControls());
             content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("即时记分", 12));
+            content.addView(controlSectionTitle("即时记分", 16));
             content.addView(actionControls());
         }
 
@@ -714,7 +715,7 @@ public final class MainActivity extends Activity {
     private Button controlChoice(String label, boolean selected, int fontSize) {
         Button item = new Button(this);
         item.setText(label);
-        item.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(fontSize));
+        item.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(px(fontSize) * 1.5f));
         item.setTextColor(selected ? LIME : TEXT);
         item.setAllCaps(false);
         item.setMinWidth(0);
@@ -745,13 +746,13 @@ public final class MainActivity extends Activity {
         TextView revival = textPx(cost > 0 && chips > 0 ? cost + "/" + chips : "—/—", 5, selected ? LIME : MUTED, false);
         revival.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
         top.addView(revival, new LinearLayout.LayoutParams(px(56), ViewGroup.LayoutParams.MATCH_PARENT));
-        tile.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(12)));
+        tile.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(17)));
         tile.addView(textPx(
             Rulebook.SMALL_BLINDS[levelNumber - 1] + "/" + Rulebook.BIG_BLINDS[levelNumber - 1],
             5,
             MUTED,
             false
-        ), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(8)));
+        ), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(11)));
         return tile;
     }
 
@@ -783,7 +784,7 @@ public final class MainActivity extends Activity {
             trackControlFocus(item, "player-count-" + count);
             item.setOnClickListener(view -> sendSetGame(nextCount, state.currentLevel, ranksForCount(nextCount), "人数已更新"));
             if (count == state.playerCount) firstControlFocus = item;
-            grid.addView(item, controlGridCell(24, 2, 2, 0, 0));
+            grid.addView(item, controlGridCell(32, 2, 2, 0, 0));
         }
         return grid;
     }
@@ -796,7 +797,7 @@ public final class MainActivity extends Activity {
             LinearLayout item = controlLevelTile(level, level == state.currentLevel);
             trackControlFocus(item, "level-" + level);
             item.setOnClickListener(view -> sendSetGame(state.playerCount, nextLevel, ranksForCount(state.playerCount), "等级已更新"));
-            grid.addView(item, controlGridCell(29, 2, 2, 0, 4));
+            grid.addView(item, controlGridCell(39, 2, 2, 0, 5));
         }
         return grid;
     }
@@ -818,13 +819,13 @@ public final class MainActivity extends Activity {
             TextView rankBadge = textPx(String.valueOf(rank + 1), 6, Color.rgb(9, 45, 31), true);
             rankBadge.setGravity(Gravity.CENTER);
             rankBadge.setBackground(roundedPx(LIME, 6, 0, Color.TRANSPARENT));
-            row.addView(rankBadge, new LinearLayout.LayoutParams(px(11), px(11)));
+            row.addView(rankBadge, new LinearLayout.LayoutParams(px(15), px(15)));
 
             LinearLayout meta = new LinearLayout(this);
             meta.setOrientation(LinearLayout.VERTICAL);
             meta.setGravity(Gravity.CENTER_VERTICAL);
-            meta.addView(textPx("第 " + (rank + 1) + " 名", 6, TEXT, true), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(9)));
-            meta.addView(textPx("+" + points + " 分", 5, LIME, false), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(8)));
+            meta.addView(textPx("第 " + (rank + 1) + " 名", 6, TEXT, true), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(12)));
+            meta.addView(textPx("+" + points + " 分", 5, LIME, false), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(11)));
             LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(px(138), ViewGroup.LayoutParams.MATCH_PARENT);
             metaParams.leftMargin = px(4);
             row.addView(meta, metaParams);
@@ -835,9 +836,9 @@ public final class MainActivity extends Activity {
             rankButton.setPadding(px(6), 0, px(6), 0);
             final int rankIndex = rank;
             rankButton.setOnClickListener(view -> showRankPicker(rankIndex));
-            row.addView(rankButton, new LinearLayout.LayoutParams(0, px(19), 1));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(33));
-            params.bottomMargin = px(5);
+            row.addView(rankButton, new LinearLayout.LayoutParams(0, px(26), 1));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(43));
+            params.bottomMargin = px(6);
             block.addView(row, params);
         }
 
@@ -845,7 +846,7 @@ public final class MainActivity extends Activity {
         trackControlFocus(settle, "settle");
         settle.setEnabled(canSettleRanks());
         settle.setOnClickListener(view -> confirmSettlement());
-        LinearLayout.LayoutParams settleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(24));
+        LinearLayout.LayoutParams settleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(32));
         block.addView(settle, settleParams);
         return block;
     }
@@ -858,7 +859,7 @@ public final class MainActivity extends Activity {
         knockout.setEnabled(!state.players.isEmpty());
         knockout.setOnClickListener(view -> showKnockoutPicker());
         knockout.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        grid.addView(knockout, controlGridCell(34, 0, 4, 0, 0));
+        grid.addView(knockout, controlGridCell(44, 0, 4, 0, 0));
 
         int cost = Rulebook.reviveCost(state.playerCount, state.currentLevel);
         Button revive = controlChoice(cost > 0 ? "↻   复活扣分\n      单次 −" + cost + " 分" : "↻   当前等级不可复活", false, 7);
@@ -866,7 +867,7 @@ public final class MainActivity extends Activity {
         revive.setEnabled(cost > 0 && !state.players.isEmpty());
         revive.setOnClickListener(view -> showRevivePicker());
         revive.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        grid.addView(revive, controlGridCell(34, 4, 0, 0, 0));
+        grid.addView(revive, controlGridCell(44, 4, 0, 0, 0));
         return grid;
     }
 
@@ -1192,7 +1193,10 @@ public final class MainActivity extends Activity {
     private TextView textPx(String value, int size, int color, boolean bold) {
         TextView view = new TextView(this);
         view.setText(value);
-        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, px(size));
+        // Television viewing distance needs a larger optical size than a desktop screenshot.
+        // Geometry continues to follow the viewport percentage scale while typography gets a
+        // consistent readability boost on both 1080p and 4K output surfaces.
+        view.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(px(size) * 1.5f));
         view.setTextColor(color);
         view.setIncludeFontPadding(false);
         view.setGravity(Gravity.CENTER_VERTICAL);
@@ -1229,7 +1233,7 @@ public final class MainActivity extends Activity {
             TextView arrow = textPx("→", 9, Color.rgb(8, 41, 28), false);
             arrow.setGravity(Gravity.CENTER);
             arrow.setBackground(roundedPx(LIME, 7, 0, Color.TRANSPARENT));
-            addView(arrow, new LinearLayout.LayoutParams(px(14), px(14)));
+            addView(arrow, new LinearLayout.LayoutParams(px(18), px(18)));
         }
 
         void setLevel(int currentLevel) {
@@ -1240,8 +1244,25 @@ public final class MainActivity extends Activity {
     }
 
     private int px(int value) {
-        DisplayMetrics metrics = getResources().getDisplayMetrics();
-        float scale = Math.min(metrics.widthPixels / 1920f, metrics.heightPixels / 1080f);
+        DisplayMetrics logicalMetrics = getResources().getDisplayMetrics();
+        int widthPixels = logicalMetrics.widthPixels;
+        int heightPixels = logicalMetrics.heightPixels;
+
+        // Several Android TV firmwares render applications on a 4K surface while exposing a
+        // 1920 × 1080 logical resource configuration.  Layout weights still fill the screen in
+        // that situation, but every fixed pixel size (especially text) becomes visually half
+        // sized.  Real display metrics retain the panel/output resolution on those devices.
+        DisplayMetrics realMetrics = new DisplayMetrics();
+        try {
+            getWindowManager().getDefaultDisplay().getRealMetrics(realMetrics);
+            widthPixels = Math.max(widthPixels, realMetrics.widthPixels);
+            heightPixels = Math.max(heightPixels, realMetrics.heightPixels);
+        } catch (RuntimeException ignored) {
+            // Keep the resource metrics fallback for unusual vendor WindowManager builds.
+        }
+
+        float scale = Math.min(widthPixels / 1920f, heightPixels / 1080f);
+        scale = Math.max(0.5f, Math.min(scale, 4f));
         return Math.round(value * scale);
     }
 

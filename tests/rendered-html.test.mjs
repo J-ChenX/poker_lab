@@ -79,6 +79,8 @@ test("电视 APK 为旧 WebView 保留原生像素看板与内置字体", async 
   assert.match(source, /createNativeDashboard\(boolean compact\)/);
   assert.match(source, /compact \? px\(768\)/);
   assert.match(source, /displaySerif/);
+  assert.match(source, /getRealMetrics\(realMetrics\)/);
+  assert.match(source, /Math\.round\(px\(size\) \* 1\.5f\)/);
   assert.match(source, /main\.postDelayed\(this, 2500\)/);
   assert.ok(serifFont.byteLength > 10_000);
 });
