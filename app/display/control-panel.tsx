@@ -164,7 +164,14 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
 
         <section className={styles.controlSection}>
           <div className={styles.controlSectionTitle}><strong>当前盲注等级</strong></div>
-          <div className={styles.compactLevels}>{BLIND_LEVELS.map((blind) => <button className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}><b>L{blind.level}</b><span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span></button>)}</div>
+          <div className={styles.compactLevels}>{BLIND_LEVELS.map((blind) => {
+            const levelReviveCost = reviveCost(state.playerCount, blind.level);
+            return <button className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}>
+              <b>L{blind.level}</b>
+              <span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span>
+              <em className={styles.levelReviveCost}><small>复活</small><i>{levelReviveCost ? `−${levelReviveCost} 分` : "—"}</i></em>
+            </button>;
+          })}</div>
         </section>
 
         <section className={styles.controlSection}>

@@ -267,13 +267,17 @@
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
 }
-.compactPicker button { height: 48px; display: flex; align-items: baseline; justify-content: center; gap: 2px; }
-.compactPicker b { color: #eaf4ee; font: 21px "Noto Serif SC", serif; }
-.compactPicker small { font-size: 9px; }
+.compactPicker button { height: 48px; display: flex; align-items: center; justify-content: center; gap: 2px; }
+.compactPicker b { color: #eaf4ee; font: 21px/1 "Noto Serif SC", serif; }
+.compactPicker small { font-size: 9px; line-height: 1; transform: translateY(4px); }
 .compactLevels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.compactLevels button { min-height: 58px; padding: 7px; display: flex; flex-direction: column; align-items: flex-start; justify-content: center; }
+.compactLevels button { min-height: 58px; padding: 7px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-content: center; align-items: center; text-align: left; }
 .compactLevels b { color: #f1f7f3; font: 19px "Noto Serif SC", serif; }
 .compactLevels span { color: var(--muted); font-size: 10px; }
+.levelReviveCost { grid-column: 2; grid-row: 1 / 3; padding-left: 8px; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-style: normal; white-space: nowrap; }
+.levelReviveCost small { color: rgb(145 167 155 / 72%); font-size: 8px; letter-spacing: .08em; }
+.levelReviveCost i { color: #dceae2; font-size: 11px; font-style: normal; font-weight: 700; }
+.controlSelected .levelReviveCost small, .controlSelected .levelReviveCost i { color: var(--lime); }
 .compactPicker button:hover:not(:disabled):not(.controlSelected),
 .compactLevels button:hover:not(:disabled):not(.controlSelected) {
   border-color: rgb(231 244 237 / 75%);
