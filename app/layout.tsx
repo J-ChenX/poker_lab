@@ -1,5 +1,8 @@
 import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import "@fontsource/noto-sans-sc/chinese-simplified-400.css";
+import "@fontsource/noto-sans-sc/chinese-simplified-700.css";
+import "@fontsource/noto-serif-sc/chinese-simplified-600.css";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,19 +17,19 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://site.example.com"),
-  title: "Poker Lab · 德州扑克胜率计算器",
-  description: "即时数学模型估算结合 50 万次蒙特卡洛校正，计算德州扑克多人胜率、分池权益和牌型概率。",
+  title: "牌桌积分簿｜德州扑克电子记分系统",
+  description: "为 3–12 人德州牌局自动计算名次积分、复活扣分和淘汰奖励。",
   openGraph: {
-    title: "Poker Lab · 德州扑克胜率计算器",
-    description: "先即时估算，再以 50 万次多人蒙特卡洛校正胜率、底池权益和牌型分布。",
+    title: "牌桌积分簿｜德州扑克电子记分系统",
+    description: "每一局，都算得清楚。",
     type: "website",
-    images: [{ url: "https://site.example.com/og.png", width: 1200, height: 630, alt: "Poker Lab 德州扑克胜率计算器" }],
+    images: [],
   },
   twitter: {
-    card: "summary_large_image",
-    title: "Poker Lab · 德州扑克胜率计算器",
-    description: "先即时估算，再以 50 万次多人蒙特卡洛校正胜率、底池权益和牌型分布。",
-    images: ["https://site.example.com/og.png"],
+    card: "summary",
+    title: "牌桌积分簿｜德州扑克电子记分系统",
+    description: "每一局，都算得清楚。",
+    images: [],
   },
   icons: {
     icon: [{ url: "/favicon.svg?v=2", type: "image/svg+xml" }],

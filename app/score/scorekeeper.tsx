@@ -258,7 +258,7 @@ export default function Scorekeeper() {
   return (
     <main className={styles.shell}>
       <header className={styles.header}>
-        <a className={styles.brand} href="/score"><span>♠</span><strong>牌桌积分簿</strong></a>
+        <a className={styles.brand} href="/"><span>♠</span><strong>牌桌积分簿</strong></a>
         <div className={styles.headerMeta}><span className={styles.liveDot} />所有设备自动同步</div>
       </header>
 
