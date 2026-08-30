@@ -1,4 +1,7 @@
 import assert from "node:assert/strict";
+import { readFile, readdir } from "node:fs/promises";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import test from "node:test";
 
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
@@ -63,6 +66,18 @@ test("电视 APK 页面不包含旧 WebView 无法解析的首屏语法", async 
   const html = await response.text();
   assert.doesNotMatch(html, /\?\?=/);
   assert.match(html, /width=1920,user-scalable=no/);
+  assert.match(html, /setAttribute\("data-tv-app",\s*"1"\)/);
+});
+
+test("电视 APK 构建保留旧 WebView 的大字号规则", async () => {
+  const clientDirectory = fileURLToPath(new URL("../dist/client", import.meta.url));
+  const files = await readdir(clientDirectory, { recursive: true });
+  const stylesheets = await Promise.all(
+    files.filter((file) => file.endsWith(".css")).map((file) => readFile(join(clientDirectory, file), "utf8")),
+  );
+  const css = stylesheets.join("\n");
+  assert.match(css, /data-tv-app[^}]+levelCard[^}]+font-size:148px/);
+  assert.match(css, /data-tv-app[^}]+blindGrid[^}]+font-size:145px/);
 });
 
 test("旧的 /score 路径不再兼容", async () => {

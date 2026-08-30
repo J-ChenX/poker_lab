@@ -63,6 +63,7 @@ const legacyTvBootstrap = `
     };
   }
   if (/(?:^|[?&])tvapp=1(?:&|$)/.test(window.location.search)) {
+    document.documentElement.setAttribute("data-tv-app", "1");
     var meta = document.querySelector('meta[name="viewport"]');
     if (!meta) {
       meta = document.createElement("meta");

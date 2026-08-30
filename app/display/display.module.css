@@ -361,6 +361,35 @@
   box-shadow: inset 0 0 0 3px rgb(11 98 66 / 22%) !important;
 }
 
+/*
+ * TCL's bundled WebView understands grid but not CSS clamp(). Production CSS
+ * minification removes the preceding duplicate declaration, so TV mode needs
+ * an explicit rule that survives the build instead of inheriting 16px text.
+ */
+:global(html[data-tv-app="1"]) .sectionHead h1 { font-size: 32px; }
+:global(html[data-tv-app="1"]) .playerList { gap: 8px; }
+:global(html[data-tv-app="1"]) .playerList article { min-height: 82px; }
+:global(html[data-tv-app="1"]) .playerList p strong { font-size: 22px; }
+:global(html[data-tv-app="1"]) .playerList article > b { font-size: 32px; }
+:global(html[data-tv-app="1"]) .levelCard span,
+:global(html[data-tv-app="1"]) .reviveCard > div span,
+:global(html[data-tv-app="1"]) .blindGrid article span { font-size: 22px; }
+:global(html[data-tv-app="1"]) .levelCard small,
+:global(html[data-tv-app="1"]) .reviveCard > div small,
+:global(html[data-tv-app="1"]) .blindGrid article > div small { font-size: 11px; }
+:global(html[data-tv-app="1"]) .levelCard > strong { font-size: 148px; }
+:global(html[data-tv-app="1"]) .playerMeta > span { font-size: 22px; }
+:global(html[data-tv-app="1"]) .playerMeta > small { font-size: 12px; }
+:global(html[data-tv-app="1"]) .blindGrid article > strong { font-size: 145px; }
+:global(html[data-tv-app="1"]) .blindGrid article > i { font-size: 34px; }
+:global(html[data-tv-app="1"]) .reviveCard > section > span { font-size: 15px; }
+:global(html[data-tv-app="1"]) .reviveCard > section > strong { font-size: 72px; }
+:global(html[data-tv-app="1"]) .reviveCard > section > strong > small { font-size: 13px; }
+:global(html[data-tv-app="1"]) .nextRevive { font-size: 13px; }
+:global(html[data-tv-app="1"]) .panelOpen .levelCard > strong { font-size: 132px; }
+:global(html[data-tv-app="1"]) .panelOpen .blindGrid article > strong { font-size: 104px; }
+:global(html[data-tv-app="1"]) .panelOpen .reviveCard > section > strong { font-size: 54px; }
+
 @keyframes panelIn { from { opacity: 0; transform: translateX(32px); } }
 @keyframes backdropIn { from { opacity: 0; } }
 

@@ -38,7 +38,7 @@ import android.widget.TextView;
  * connection recovery and translating remote-control keys into DOM keyboard events.
  */
 public final class MainActivity extends Activity {
-    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1&apk=2.2.0";
+    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1&apk=2.3.0";
     private static final String PREFS = "poker_lab_tv";
     private static final String PREF_AUTH_USERNAME = "auth_username";
     private static final String PREF_AUTH_PASSWORD = "auth_password";
@@ -96,7 +96,7 @@ public final class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
-        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.2");
+        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.3");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
@@ -204,15 +204,15 @@ public final class MainActivity extends Activity {
                 "var m=document.querySelector('meta[name=viewport]');" +
                 "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
                 "m.content='width=1920,user-scalable=no,viewport-fit=cover';" +
+                "document.documentElement.setAttribute('data-tv-app','1');" +
                 "document.documentElement.style.background='#071812';" +
                 "document.body.style.margin='0';" +
                 "window.__pokerLabTvKey=function(type,key,repeat){" +
                     "var target=document.activeElement&&document.activeElement!==document.body?document.activeElement:window;" +
-                    "var event;" +
-                    "try{event=new KeyboardEvent(type,{key:key,code:key,bubbles:true,cancelable:true,repeat:!!repeat});}" +
-                    "catch(error){event=document.createEvent('Event');event.initEvent(type,true,true);" +
-                        "try{Object.defineProperty(event,'key',{value:key});Object.defineProperty(event,'code',{value:key});}" +
-                        "catch(ignore){event.key=key;event.code=key;}}" +
+                    "var event=document.createEvent('Event');event.initEvent(type,true,true);" +
+                    "try{Object.defineProperty(event,'key',{value:key});Object.defineProperty(event,'code',{value:key});" +
+                        "Object.defineProperty(event,'repeat',{value:!!repeat});}" +
+                    "catch(ignore){event.key=key;event.code=key;event.repeat=!!repeat;}" +
                     "var allowed=target.dispatchEvent(event);" +
                     "if(type==='keydown'&&key==='Enter'&&allowed){" +
                         "var active=document.activeElement;" +
@@ -257,6 +257,16 @@ public final class MainActivity extends Activity {
         if (connectionError.getVisibility() == View.VISIBLE && "Enter".equals(key)) {
             if (event.getAction() == KeyEvent.ACTION_UP) loadDisplay();
             return true;
+        }
+        if (event.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP
+            || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN
+            || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_LEFT
+            || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_RIGHT
+            || event.getKeyCode() == KeyEvent.KEYCODE_DPAD_CENTER
+            || event.getKeyCode() == KeyEvent.KEYCODE_ENTER
+            || event.getKeyCode() == KeyEvent.KEYCODE_NUMPAD_ENTER) {
+            webView.requestFocus();
+            if (super.dispatchKeyEvent(event)) return true;
         }
         dispatchRemoteKey(
             event.getAction() == KeyEvent.ACTION_DOWN ? "keydown" : "keyup",
