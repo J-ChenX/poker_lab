@@ -39,6 +39,8 @@ export default function DisplayPage() {
   const currentLevel = state?.currentLevel ?? 1;
   const blind = BLIND_LEVELS[currentLevel - 1] ?? BLIND_LEVELS[0];
   const cost = reviveCost(playerCount, currentLevel);
+  const nextBlind = BLIND_LEVELS[currentLevel] ?? null;
+  const nextCost = nextBlind ? reviveCost(playerCount, nextBlind.level) : 0;
   const placementValues = Array.from({ length: scoringPlaceCount(playerCount) }, (_, index) => placementScore(playerCount, index + 1));
   const knockoutValue = knockoutBase(playerCount);
 
@@ -107,8 +109,8 @@ export default function DisplayPage() {
 
         <div className={styles.reviveCard}>
           <div><span>复活信息</span><small>REVIVAL</small></div>
-          <section><span>本轮复活价格</span><strong>{cost ? `−${cost}` : "—"}<small>{cost ? "积分 / 次" : "当前轮次不可复活"}</small></strong></section>
-          <section><span>复活筹码</span><strong>{cost && blind.chips ? formatNumber(blind.chips) : "—"}<small>{cost && blind.chips ? "筹码" : "当前轮次不可复活"}</small></strong></section>
+          <section><span>本轮复活价格</span><strong>{cost ? `−${cost}` : "—"}<small>{cost ? "积分 / 次" : "当前轮次不可复活"}</small></strong><em className={styles.nextRevive}>下一轮 <b>{nextBlind ? nextCost ? `−${nextCost} 分 / 次` : "不可复活" : "已到最高等级"}</b></em></section>
+          <section><span>复活筹码</span><strong>{cost && blind.chips ? formatNumber(blind.chips) : "—"}<small>{cost && blind.chips ? "筹码" : "当前轮次不可复活"}</small></strong><em className={styles.nextRevive}>下一轮 <b>{nextBlind ? nextCost && nextBlind.chips ? `${formatNumber(nextBlind.chips)} 筹码` : "不可复活" : "已到最高等级"}</b></em></section>
         </div>
       </section>
     </section>

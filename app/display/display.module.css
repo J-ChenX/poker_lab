@@ -148,7 +148,7 @@
 .playerMeta > small { margin-top: 5px; display: flex; align-items: center; gap: 8px; color: #e4efe9; font-size: clamp(9px, .68vw, 12px); white-space: nowrap; }
 .playerMeta > small i { min-width: 48px; color: #83a293; font-size: .88em; font-style: normal; letter-spacing: .06em; text-align: right; }
 
-.blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 1.5vw; }
+.blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .blindGrid article {
   min-width: 0;
   padding: 2.2vh 2.2vw;
@@ -177,6 +177,8 @@
 .reviveCard > section > span { color: var(--muted); font-size: clamp(10px, .85vw, 15px); }
 .reviveCard > section > strong { margin-top: .5vh; display: flex; align-items: baseline; gap: .7vw; color: #fff; font-family: "Noto Serif SC", serif; font-size: clamp(36px, 4vw, 72px); line-height: 1; }
 .reviveCard > section > strong > small { color: #88a396; font: clamp(9px, .72vw, 13px) "Noto Sans SC", sans-serif; white-space: nowrap; }
+.nextRevive { margin-top: 8px; display: block; color: rgb(187 214 200 / 52%); font-size: clamp(8px, .62vw, 11px); font-style: normal; }
+.nextRevive b { margin-left: 5px; color: rgb(220 236 228 / 72%); font-weight: 500; }
 
 .empty { min-height: 52vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
 .empty span { margin-bottom: 10px; color: var(--lime); font-size: 34px; }
@@ -214,13 +216,15 @@
 .panelOpen .gameState { min-height: calc(100vh - 110px); grid-template-rows: .72fr 1.18fr .8fr; }
 .panelOpen .levelCard { padding-inline: 2.2vw; }
 .panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
-.panelOpen .blindGrid article > strong { font-size: clamp(70px, 8vw, 124px); }
+.panelOpen .blindGrid { gap: 8px; }
+.panelOpen .blindGrid article > strong { font-size: clamp(64px, 6.4vw, 104px); }
 .panelOpen .reviveCard { padding: 14px 18px; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .panelOpen .reviveCard > div { grid-column: 1 / -1; }
 .panelOpen .reviveCard > section { padding-left: 0; border-left: 0; }
 .panelOpen .reviveCard > section:last-child { padding-left: 16px; border-left: 1px solid rgb(172 222 193 / 16%); }
 .panelOpen .reviveCard > section > strong { gap: 5px; font-size: clamp(30px, 3.2vw, 54px); }
 .panelOpen .reviveCard > section > strong > small { font-size: 9px; }
+.panelOpen .nextRevive { margin-top: 6px; font-size: 8px; }
 .controlHead {
   min-height: 112px;
   padding: 22px 26px;
@@ -264,13 +268,37 @@
 .controlSelected { border-color: rgb(200 241 90 / 65%) !important; color: var(--lime) !important; background: rgb(200 241 90 / 12%) !important; box-shadow: inset 0 0 0 1px rgb(200 241 90 / 10%); }
 .controlSelected b { color: var(--lime) !important; }
 .controlRanks { display: grid; grid-template-columns: 1fr; gap: 9px; }
-.controlRanks label { min-width: 0; min-height: 63px; padding: 9px 10px; display: grid; grid-template-columns: minmax(150px, .8fr) 1fr; align-items: center; gap: 10px; border: 1px solid rgb(172 222 193 / 14%); border-radius: 10px; background: rgb(255 255 255 / 3%); }
-.controlRanks label > span { min-width: 0; display: grid; grid-template-columns: 28px 1fr; align-items: center; }
-.controlRanks label i { width: 25px; height: 25px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 50%; color: #173023; background: var(--lime); font-size: 11px; font-style: normal; font-weight: 800; }
-.controlRanks label b { font-size: 12px; }
-.controlRanks label small { color: var(--lime); font-size: 9px; }
-.controlRanks select, .actionEditor select { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid rgb(172 222 193 / 18%); border-radius: 8px; color: #eaf4ee; background: #102d23; font-size: 11px; }
-.controlRanks select:focus, .actionEditor select:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+.controlRankRow { min-width: 0; min-height: 66px; padding: 9px 10px; display: grid; grid-template-columns: minmax(180px, .42fr) 1fr; align-items: center; gap: 14px; border: 1px solid rgb(172 222 193 / 14%); border-radius: 10px; background: rgb(255 255 255 / 3%); }
+.controlRankRow > span { min-width: 0; display: grid; grid-template-columns: 30px 1fr; align-items: center; }
+.controlRankRow > span i { width: 27px; height: 27px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 50%; color: #173023; background: var(--lime); font-size: 11px; font-style: normal; font-weight: 800; }
+.controlRankRow > span b { font-size: 12px; }
+.controlRankRow > span small { color: var(--lime); font-size: 9px; }
+.rankPlayerSelect { position: relative; min-width: 0; }
+.rankSelectTrigger { width: 100%; height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid rgb(172 222 193 / 22%); border-radius: 8px; color: #e7f1eb; background: #0c2b21; text-align: left; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.rankSelectTrigger:hover:not(:disabled) { border-color: rgb(200 241 90 / 48%); background: #103629; }
+.rankSelectTrigger:focus-visible, .rankSelectTriggerOpen { outline: 0; border-color: var(--lime); box-shadow: 0 0 0 3px rgb(200 241 90 / 10%); }
+.rankSelectTrigger:disabled { opacity: .44; cursor: not-allowed; }
+.rankSelectTrigger > span { min-width: 0; display: flex; align-items: center; gap: 9px; }
+.rankSelectTrigger > span > b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.rankSelectTrigger i, .rankSelectMenu > button > i { width: 27px; height: 27px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #0b6242; background: #def2e7; font-size: 8px; font-style: normal; font-weight: 800; }
+.rankSelectTrigger > em { color: #a5bbb0; font-size: 16px; font-style: normal; line-height: 1; transition: transform .16s ease; }
+.rankSelectTriggerOpen > em { transform: rotate(180deg); }
+.rankSelectTriggerFilled { border-color: rgb(200 241 90 / 40%); background: #10372a; }
+.rankSelectMenu { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0; min-width: 260px; max-height: 250px; padding: 6px; overflow: auto; border: 1px solid #b9cac0; border-radius: 10px; background: #f8fcf9; box-shadow: 0 20px 44px rgb(0 12 7 / 42%); }
+.rankSelectMenu > button { width: 100%; min-height: 48px; padding: 7px 9px; display: grid; grid-template-columns: 29px minmax(0, 1fr) 20px; align-items: center; gap: 9px; border: 0; border-bottom: 1px solid #e4eee8; border-radius: 6px; color: #183126; background: transparent; text-align: left; cursor: pointer; }
+.rankSelectMenu > button:last-child { border-bottom: 0; }
+.rankSelectMenu > button:hover:not(:disabled) { background: #e8f4ed; }
+.rankSelectMenu > button:focus-visible { outline: 2px solid #0b6242; outline-offset: -2px; }
+.rankSelectMenu > button:disabled { opacity: .4; cursor: not-allowed; }
+.rankSelectMenu > button > span > * { display: block; }
+.rankSelectMenu > button strong { font-size: 11px; }
+.rankSelectMenu > button small { margin-top: 3px; color: #75857c; font-size: 8px; }
+.rankSelectMenu > button > b { color: #0b6242; font-size: 13px; }
+.rankSelectMenu .rankOptionSelected { color: #0b6242; background: #e4f3eb; }
+.rankSelectMenu .rankClearOption { min-height: 38px; grid-template-columns: 1fr 20px; color: #944f47; }
+.rankSelectMenu .rankClearOption small { font-size: 15px; text-align: center; }
+.actionEditor select { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid rgb(172 222 193 / 18%); border-radius: 8px; color: #eaf4ee; background: #102d23; font-size: 11px; }
+.actionEditor select:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
 .settleButton, .actionConfirm { width: 100%; min-height: 48px; margin-top: 12px; border: 0; border-radius: 10px; color: #10291f; background: var(--lime); font-weight: 800; cursor: pointer; }
 .settleButton span { margin-left: 6px; }
 .settleButton:hover, .settleButton:focus-visible, .actionConfirm:hover, .actionConfirm:focus-visible { outline: 2px solid rgb(200 241 90 / 35%); outline-offset: 3px; filter: brightness(1.05); }
@@ -341,7 +369,7 @@
   .compactPicker { grid-template-columns: repeat(5, 1fr); }
   .compactLevels { grid-template-columns: repeat(2, 1fr); }
   .controlRanks { grid-template-columns: 1fr; }
-  .controlRanks label { grid-template-columns: minmax(130px, .8fr) 1fr; }
+  .controlRankRow { grid-template-columns: minmax(130px, .8fr) 1fr; }
   .controlActions { grid-template-columns: 1fr; }
   .playerChips { grid-template-columns: 1fr 1fr; }
 }

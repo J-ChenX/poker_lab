@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { BLIND_LEVELS, knockoutBase, knockoutShare, placementScore, reviveCost, scoringPlaceCount } from "../score/rules";
 import styles from "./display.module.css";
 
@@ -20,6 +20,42 @@ export type DisplayScoreAction =
 type ActionMode = "knockout" | "revive" | null;
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN");
+
+function RankPlayerSelect({ value, players, unavailableNames, label, disabled, onChange }: {
+  value: string;
+  players: DisplayPlayer[];
+  unavailableNames: Set<string>;
+  label: string;
+  disabled: boolean;
+  onChange: (name: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const closeOnOutsidePress = (event: PointerEvent) => {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    };
+    document.addEventListener("pointerdown", closeOnOutsidePress);
+    return () => document.removeEventListener("pointerdown", closeOnOutsidePress);
+  }, [open]);
+
+  return <div className={styles.rankPlayerSelect} ref={rootRef}>
+    <button className={`${styles.rankSelectTrigger} ${open ? styles.rankSelectTriggerOpen : ""} ${value ? styles.rankSelectTriggerFilled : ""}`} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+      <span>{value ? <><i>{value.slice(0, 2).toUpperCase()}</i><b>{value}</b></> : <b>{players.length ? "选择牌手" : "暂无牌手"}</b>}</span>
+      <em aria-hidden="true">⌄</em>
+    </button>
+    {open && <div className={styles.rankSelectMenu} role="listbox" aria-label={label} tabIndex={-1} onKeyDown={(event) => event.key === "Escape" && setOpen(false)}>
+      {value && <button className={styles.rankClearOption} type="button" onClick={() => { onChange(""); setOpen(false); }}><span>清除选择</span><small>×</small></button>}
+      {players.map((player) => {
+        const unavailable = unavailableNames.has(player.name);
+        const selected = player.name === value;
+        return <button className={selected ? styles.rankOptionSelected : ""} type="button" role="option" aria-selected={selected} disabled={unavailable} key={player.name} onClick={() => { onChange(player.name); setOpen(false); }}><i>{player.name.slice(0, 2).toUpperCase()}</i><span><strong>{player.name}</strong><small>{unavailable ? "已用于其他名次" : selected ? "当前选择" : `${player.score > 0 ? "+" : ""}${player.score} 分`}</small></span><b>{selected ? "✓" : ""}</b></button>;
+      })}
+    </div>}
+  </div>;
+}
 
 export default function DisplayControlPanel({ state, busy, onClose, onMutate }: {
   state: DisplaySharedState;
@@ -122,20 +158,20 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
         {notice && <div className={styles.controlNotice} role="status">{notice}</div>}
 
         <section className={styles.controlSection}>
-          <div className={styles.controlSectionTitle}><strong>本局开始人数</strong><small>决定名次分与淘汰分</small></div>
+          <div className={styles.controlSectionTitle}><strong>本局开始人数</strong></div>
           <div className={styles.compactPicker}>{Array.from({ length: 10 }, (_, index) => index + 3).map((count) => <button className={count === state.playerCount ? styles.controlSelected : ""} type="button" disabled={busy} key={count} onClick={() => changePlayerCount(count)}><b>{count}</b><small>人</small></button>)}</div>
         </section>
 
         <section className={styles.controlSection}>
-          <div className={styles.controlSectionTitle}><strong>当前盲注等级</strong><small>点击后立即同步到所有设备</small></div>
+          <div className={styles.controlSectionTitle}><strong>当前盲注等级</strong></div>
           <div className={styles.compactLevels}>{BLIND_LEVELS.map((blind) => <button className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}><b>L{blind.level}</b><span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span></button>)}</div>
         </section>
 
         <section className={styles.controlSection}>
-          <div className={styles.controlSectionTitle}><strong>计分名次</strong><small>只计算有名次积分的前半数，最多 6 名</small></div>
+          <div className={styles.controlSectionTitle}><strong>计分名次</strong></div>
           <div className={styles.controlRanks}>{Array.from({ length: paidPlaces }, (_, index) => {
             const current = state.rankedPlayers[index] ?? "";
-            return <label key={index}><span><i>{index + 1}</i><b>第 {index + 1} 名</b><small>＋{placementScore(state.playerCount, index + 1)} 分</small></span><select aria-label={`选择第 ${index + 1} 名牌手`} value={current} disabled={busy || !state.players.length} onChange={(event) => changeRank(index, event.target.value)}><option value="">选择牌手</option>{sortedPlayers.map((player) => <option value={player.name} disabled={selectedRanks.includes(player.name) && player.name !== current} key={player.name}>{player.name}（{player.score} 分）</option>)}</select></label>;
+            return <div className={styles.controlRankRow} key={index}><span><i>{index + 1}</i><b>第 {index + 1} 名</b><small>＋{placementScore(state.playerCount, index + 1)} 分</small></span><RankPlayerSelect value={current} players={sortedPlayers} unavailableNames={new Set(selectedRanks.filter((name) => name !== current))} label={`选择第 ${index + 1} 名牌手`} disabled={busy || !state.players.length} onChange={(name) => changeRank(index, name)} /></div>;
           })}</div>
           <button className={styles.settleButton} type="button" disabled={busy || !state.players.length} onClick={settlePlacement}>确认结算名次积分 <span>→</span></button>
         </section>
