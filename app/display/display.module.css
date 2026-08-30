@@ -122,10 +122,11 @@
 .playerList article > b.negative { color: #f18c82; }
 
 .gameState {
+  --card-gap: 1.5vh;
   min-width: 0;
   display: grid;
   grid-template-rows: .74fr 1.2fr .82fr;
-  gap: 1.5vh;
+  gap: var(--card-gap);
 }
 
 .levelCard {
@@ -148,7 +149,7 @@
 .playerMeta > small { margin-top: 5px; display: flex; align-items: center; gap: 8px; color: #e4efe9; font-size: clamp(9px, .68vw, 12px); white-space: nowrap; }
 .playerMeta > small i { min-width: 48px; color: #83a293; font-size: .88em; font-style: normal; letter-spacing: .06em; text-align: right; }
 
-.blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--card-gap); }
 .blindGrid article {
   min-width: 0;
   padding: 2.2vh 2.2vw;
@@ -195,7 +196,7 @@
   animation: backdropIn .16s ease-out;
 }
 .controlPanel {
-  width: 70vw;
+  width: 60vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -205,7 +206,7 @@
   box-shadow: -20px 0 52px rgb(0 0 0 / 26%);
   animation: panelIn .2s ease-out;
 }
-.panelOpen { width: 30vw; padding-inline: 12px; overflow: hidden; }
+.panelOpen { width: 40vw; padding-inline: 12px; overflow: hidden; }
 .panelOpen .header { grid-template-columns: 1fr auto; }
 .panelOpen .brand small { display: none; }
 .panelOpen .headerControls { gap: 6px; }
@@ -216,7 +217,7 @@
 .panelOpen .gameState { min-height: calc(100vh - 110px); grid-template-rows: .72fr 1.18fr .8fr; }
 .panelOpen .levelCard { padding-inline: 2.2vw; }
 .panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
-.panelOpen .blindGrid { gap: 8px; }
+.panelOpen .blindGrid { gap: var(--card-gap); }
 .panelOpen .blindGrid article > strong { font-size: clamp(64px, 6.4vw, 104px); }
 .panelOpen .reviveCard { padding: 14px 18px; grid-template-columns: 1fr 1fr; gap: 8px 16px; }
 .panelOpen .reviveCard > div { grid-column: 1 / -1; }
@@ -347,13 +348,13 @@
   .dashboard { padding-top: 12px; gap: 10px; }
   .playerList { grid-template-columns: 1fr; }
   .playerList article { min-height: 60px; padding: 8px; grid-template-columns: 25px 38px minmax(0, 1fr) auto; gap: 8px; }
-  .gameState { min-height: 620px; grid-template-rows: .62fr 1.25fr 1fr; }
+  .gameState { --card-gap: 8px; min-height: 620px; grid-template-rows: .62fr 1.25fr 1fr; }
   .levelCard { padding: 16px; grid-template-columns: 1fr auto; }
   .playerMeta { min-width: 122px; }
   .playerMeta > span { font-size: 12px; }
   .playerMeta > small { gap: 5px; font-size: 8px; }
   .playerMeta > small i { min-width: 40px; }
-  .blindGrid { gap: 8px; }
+  .blindGrid { gap: var(--card-gap); }
   .blindGrid article { padding: 14px; }
   .blindGrid article > strong { font-size: clamp(40px, 13vw, 68px); }
   .reviveCard { padding: 16px; grid-template-columns: 1fr 1fr; gap: 12px; }
