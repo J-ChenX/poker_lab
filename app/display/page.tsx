@@ -48,7 +48,6 @@ export default function DisplayPage() {
   const playerCount = state?.playerCount ?? 5;
   const currentLevel = state?.currentLevel ?? 1;
   const blind = BLIND_LEVELS[currentLevel - 1] ?? BLIND_LEVELS[0];
-  const nextBlind = BLIND_LEVELS[currentLevel] ?? null;
   const cost = reviveCost(playerCount, currentLevel);
 
   const enterFullscreen = async () => {
@@ -62,29 +61,34 @@ export default function DisplayPage() {
       <div className={styles.actions}><Link href="/">返回控制台</Link><button type="button" onClick={enterFullscreen}>全屏显示</button></div>
     </header>
 
-    <section className={styles.blinds} aria-label="当前牌局状态">
-      <div className={styles.level}><span>当前轮次</span><strong>L{currentLevel}</strong><small>{playerCount} 人开局</small></div>
-      <div><span>小盲</span><strong>{formatNumber(blind.small)}</strong><small>SMALL BLIND</small></div>
-      <div><span>大盲</span><strong>{formatNumber(blind.big)}</strong><small>BIG BLIND</small></div>
-      <div><span>复活价格</span><strong>{cost ? `−${cost}` : "—"}</strong><small>{cost ? "积分 / 次" : "当前不可复活"}</small></div>
-      <div><span>下一轮</span><strong>{nextBlind ? `${formatNumber(nextBlind.small)} / ${formatNumber(nextBlind.big)}` : "终局"}</strong><small>{nextBlind ? `L${nextBlind.level}` : "FINAL LEVEL"}</small></div>
-    </section>
-
-    <section className={styles.content}>
-      <div className={styles.ranking}>
+    <section className={styles.dashboard}>
+      <aside className={styles.ranking}>
         <div className={styles.sectionHead}><div><span>01</span><h1>实时积分排名</h1></div><small>{sortedPlayers.length} 位牌手</small></div>
         {!state && <div className={styles.empty}><span>◌</span><strong>正在连接牌桌</strong><small>获取最新积分与盲注信息</small></div>}
         {state && sortedPlayers.length === 0 && <div className={styles.empty}><span>♠</span><strong>牌桌正在等待玩家</strong><small>请在手机控制台中添加人员</small></div>}
-        <div className={styles.playerGrid}>{sortedPlayers.map((player, index) => <article className={index < 3 ? styles.leader : ""} key={player.name}>
+        <div className={styles.playerList}>{sortedPlayers.map((player, index) => <article className={index < 3 ? styles.leader : ""} key={player.name}>
           <i>{index + 1}</i><span className={styles.avatar}>{player.name.slice(0, 2).toUpperCase()}</span><p><strong>{player.name}</strong><small>{index === 0 ? "当前领先" : "积分账户"}</small></p><b className={player.score < 0 ? styles.negative : ""}>{player.score > 0 ? "+" : ""}{player.score}<small>分</small></b>
         </article>)}</div>
-      </div>
-
-      <aside className={styles.placements}>
-        <div className={styles.sectionHead}><div><span>02</span><h2>本局名次</h2></div></div>
-        <div className={styles.placeList}>{(state?.rankedPlayers ?? []).map((name, index) => <div key={index} className={name ? styles.placeFilled : ""}><i>{index + 1}</i><span><strong>第 {index + 1} 名</strong><small>{name || "等待结算"}</small></span><b>{name ? "✓" : "—"}</b></div>)}</div>
-        <p>手机端的每次操作都会自动同步到这里。电视看板仅展示，不会修改牌局数据。</p>
       </aside>
+
+      <section className={styles.gameState} aria-label="当前轮次与盲注信息">
+        <div className={styles.levelCard}>
+          <div><span>当前轮次</span><small>CURRENT LEVEL</small></div>
+          <strong>L{currentLevel}</strong>
+          <p><b>{playerCount}</b> 人开局</p>
+        </div>
+
+        <div className={styles.blindGrid}>
+          <article className={styles.smallBlind}><div><span>小盲</span><small>SMALL BLIND</small></div><strong>{formatNumber(blind.small)}</strong><i>SB</i></article>
+          <article className={styles.bigBlind}><div><span>大盲</span><small>BIG BLIND</small></div><strong>{formatNumber(blind.big)}</strong><i>BB</i></article>
+        </div>
+
+        <div className={styles.reviveCard}>
+          <div><span>复活信息</span><small>REVIVAL</small></div>
+          <section><span>本轮复活价格</span><strong>{cost ? `−${cost}` : "—"}<small>{cost ? "积分 / 次" : "当前轮次不可复活"}</small></strong></section>
+          <section><span>复活筹码</span><strong>{cost && blind.chips ? formatNumber(blind.chips) : "—"}<small>{cost && blind.chips ? "筹码" : "当前轮次不可复活"}</small></strong></section>
+        </div>
+      </section>
     </section>
   </main>;
 }
