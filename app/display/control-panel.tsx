@@ -168,7 +168,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
             return <button className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}>
               <b>L{blind.level}</b>
               <span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span>
-              <em className={styles.levelReviveCost}><small>复活</small><i>{levelReviveCost ? `−${levelReviveCost} 分` : "—"}</i></em>
+              <em className={styles.levelReviveCost}>{levelReviveCost && blind.chips ? `${levelReviveCost}/${blind.chips}` : "—/—"}</em>
             </button>;
           })}</div>
         </section>
