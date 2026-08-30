@@ -235,9 +235,9 @@
 .panelOpen .reviveCard > section:last-child { padding-left: 16px; border-left: 1px solid rgb(172 222 193 / 16%); }
 .panelOpen .reviveCard > section > strong { gap: 5px; font-size: clamp(30px, 3.2vw, 54px); }
 .panelOpen .reviveCard > section > strong > small { font-size: 9px; }
-.panelOpen .nextRevive { margin-top: 6px; font-size: 8px; }
+.panelOpen .nextRevive { margin-top: 7px; font-size: 8px; transform: translateY(8px); }
 .controlHead {
-  min-height: 112px;
+  min-height: 96px;
   padding: 22px 26px;
   display: flex;
   align-items: flex-start;
@@ -246,8 +246,7 @@
   border-bottom: 1px solid rgb(172 222 193 / 15%);
 }
 .controlHead small { color: var(--lime); font-size: 9px; letter-spacing: .2em; }
-.controlHead h2 { margin: 4px 0 3px; font-family: "Noto Serif SC", serif; font-size: 28px; }
-.controlHead p { margin: 0; color: var(--muted); font-size: 12px; }
+.controlHead h2 { margin: 4px 0 0; font-family: "Noto Serif SC", serif; font-size: 28px; }
 .controlHead > button { width: 42px; height: 42px; border: 1px solid rgb(190 220 203 / 20%); border-radius: 50%; color: #d7e7de; background: rgb(255 255 255 / 5%); font-size: 25px; cursor: pointer; }
 .controlHead > button:hover, .controlHead > button:focus-visible { outline: none; color: #10291f; background: var(--lime); }
 .controlBody { min-height: 0; padding: 22px 26px 38px; overflow-y: auto; scrollbar-color: rgb(200 241 90 / 38%) transparent; }

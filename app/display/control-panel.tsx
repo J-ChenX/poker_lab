@@ -150,7 +150,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
   return <div className={styles.controlBackdrop} role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
     <aside className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title">
       <header className={styles.controlHead}>
-        <div><small>TABLE CONTROL</small><h2 id="display-control-title">牌桌控制</h2><p>L{state.currentLevel} · {state.playerCount} 人局 · {formatNumber(currentBlind.small)} / {formatNumber(currentBlind.big)}</p></div>
+        <div><small>TABLE CONTROL</small><h2 id="display-control-title">牌桌控制</h2></div>
         <button type="button" onClick={onClose} aria-label="关闭牌桌控制">×</button>
       </header>
 
