@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { BLIND_LEVELS, reviveCost } from "../score/rules";
 import styles from "./display.module.css";
@@ -20,6 +19,7 @@ const formatNumber = (value: number) => value.toLocaleString("zh-CN");
 export default function DisplayPage() {
   const [state, setState] = useState<SharedState | null>(null);
   const [connected, setConnected] = useState(true);
+  const [advancing, setAdvancing] = useState(false);
 
   const refresh = useCallback(async () => {
     try {
@@ -50,15 +50,39 @@ export default function DisplayPage() {
   const blind = BLIND_LEVELS[currentLevel - 1] ?? BLIND_LEVELS[0];
   const cost = reviveCost(playerCount, currentLevel);
 
-  const enterFullscreen = async () => {
-    try { await document.documentElement.requestFullscreen(); } catch { /* 浏览器可能已处于接收器全屏 */ }
+  const advanceLevel = async () => {
+    if (!state || state.currentLevel >= BLIND_LEVELS.length || advancing) return;
+    setAdvancing(true);
+    try {
+      const response = await fetch("/api/score-state", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          type: "setGame",
+          playerCount: state.playerCount,
+          currentLevel: state.currentLevel + 1,
+          rankedPlayers: state.rankedPlayers,
+        }),
+      });
+      if (!response.ok) throw new Error("更新失败");
+      setState(await response.json() as SharedState);
+      setConnected(true);
+    } catch {
+      setConnected(false);
+    } finally {
+      setAdvancing(false);
+    }
   };
 
   return <main className={styles.screen}>
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
       <div className={styles.connection}><i className={connected ? styles.online : styles.offline} /><span>{connected ? "与手机同步中" : "等待网络恢复"}</span></div>
-      <div className={styles.actions}><Link href="/">返回控制台</Link><button type="button" onClick={enterFullscreen}>全屏显示</button></div>
+      <button className={styles.advanceLevel} type="button" onClick={advanceLevel} disabled={!state || currentLevel >= BLIND_LEVELS.length || advancing}>
+        <span>{currentLevel >= BLIND_LEVELS.length ? "最高等级" : "下一等级"}</span>
+        <strong>{currentLevel >= BLIND_LEVELS.length ? "L10" : `L${currentLevel + 1}`}</strong>
+        <i aria-hidden="true">→</i>
+      </button>
     </header>
 
     <section className={styles.dashboard}>
