@@ -19,14 +19,14 @@ Android TV 遥控器应用。启动后以 1920 × 1080 电视视口全屏运行
 APK 支持 Android 5.0（API 21）及以上系统。构建需要 JDK 17、Android SDK 36 和 Android Gradle Plugin 9.2。
 
 ```powershell
-./gradlew.bat assembleDebug
+./gradlew.bat assembleRelease
 ```
 
-安装包生成在 `app/build/outputs/apk/debug/app-debug.apk`。
+安装包生成在 `app/build/outputs/apk/release/app-release.apk`。
 
 ## 电视安装
 
-1. 将 `PokerLab-TV-v2.0.0.apk` 复制到 U 盘。
+1. 将 `PokerLab-TV-v2.1.0.apk` 复制到 U 盘。
 2. 在电视文件管理器中打开 APK；首次安装时允许该文件管理器安装未知来源应用。
 3. 从电视应用列表启动“Poker Lab 牌桌看板”。
 4. 如果 cpolar 开启了访问保护，首次启动时输入与浏览器访问网站相同的账号和密码。

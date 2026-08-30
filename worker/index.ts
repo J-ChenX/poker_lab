@@ -40,8 +40,26 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    const response = await handler.fetch(request, env, ctx);
+    if (url.pathname === "/display" && url.searchParams.get("tvapp") === "1") {
+      return makeLegacyTvResponse(response);
+    }
+    return response;
   },
 };
+
+const navigationRuntimeExpression =
+  '((self[Symbol.for("vinext.navigationRuntime")]??={bootstrap:{routeManifest:null},functions:{}}).bootstrap.rsc??={rsc:[]})';
+const legacyNavigationRuntimeExpression =
+  '(function(){var s=Symbol.for("vinext.navigationRuntime");var n=self[s];if(n==null)n=self[s]={bootstrap:{routeManifest:null},functions:{}};if(n.bootstrap.rsc==null)n.bootstrap.rsc={rsc:[]};return n.bootstrap.rsc})()';
+
+async function makeLegacyTvResponse(response: Response) {
+  if (!response.headers.get("content-type")?.toLowerCase().includes("text/html")) return response;
+  const html = (await response.text()).split(navigationRuntimeExpression).join(legacyNavigationRuntimeExpression);
+  const headers = new Headers(response.headers);
+  headers.delete("content-length");
+  headers.set("cache-control", "no-store, no-cache, must-revalidate");
+  return new Response(html, { status: response.status, statusText: response.statusText, headers });
+}
 
 export default worker;

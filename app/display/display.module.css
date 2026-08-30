@@ -11,6 +11,9 @@
   background: radial-gradient(circle at 64% -20%, #174d39 0, #0b271d 38%, #071812 78%);
   font-family: "Noto Sans SC", sans-serif;
   font-variant-numeric: tabular-nums;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
   transition: width .28s cubic-bezier(.22, .8, .25, 1), padding .28s cubic-bezier(.22, .8, .25, 1);
 }
 
@@ -77,11 +80,12 @@
 .sectionHead { min-height: 42px; margin-bottom: 1.5vh; display: flex; align-items: center; justify-content: space-between; }
 .sectionHead > div { display: flex; align-items: center; gap: 12px; }
 .sectionHead span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgb(200 241 90 / 38%); border-radius: 50%; color: var(--lime); font-size: 10px; }
-.sectionHead h1 { margin: 0; font-family: "Noto Serif SC", serif; font-size: clamp(23px, 1.65vw, 32px); }
+.sectionHead h1 { margin: 0; font-family: "Noto Serif SC", serif; font-size: 32px; font-size: clamp(23px, 1.65vw, 32px); }
 .sectionHead > small { color: var(--muted); font-size: 13px; }
 
-.playerList { display: grid; gap: clamp(5px, .75vh, 10px); }
+.playerList { display: grid; gap: 8px; gap: clamp(5px, .75vh, 10px); }
 .playerList article {
+  min-height: 82px;
   min-height: clamp(62px, 7.5vh, 84px);
   padding: .75vh .85vw;
   display: grid;
@@ -97,9 +101,9 @@
 .playerList article.leader > i { color: var(--lime); }
 .avatar { width: 46px; height: 46px; display: grid; place-items: center; border-radius: 50%; color: #b9dbca; background: #163c2d; font-size: 12px; font-weight: 700; }
 .playerList p { min-width: 0; margin: 0; display: flex; flex-direction: column; }
-.playerList p strong { overflow: hidden; font-size: clamp(16px, 1.1vw, 22px); text-overflow: ellipsis; white-space: nowrap; }
+.playerList p strong { overflow: hidden; font-size: 22px; font-size: clamp(16px, 1.1vw, 22px); text-overflow: ellipsis; white-space: nowrap; }
 .playerList p small { color: var(--muted); font-size: 10px; }
-.playerList article > b { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: clamp(22px, 1.65vw, 32px); }
+.playerList article > b { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: 32px; font-size: clamp(22px, 1.65vw, 32px); }
 .playerList article > b small { margin-left: 4px; color: #82998d; font: 10px "Noto Sans SC", sans-serif; }
 .playerList article > b.negative { color: #f18c82; }
 
@@ -124,13 +128,13 @@
   background: linear-gradient(125deg, #08734b, #0b4f38 58%, #11392d);
 }
 .levelCard > div, .reviveCard > div, .blindGrid article > div { display: flex; flex-direction: column; }
-.levelCard span, .reviveCard > div span, .blindGrid article span { font-size: clamp(14px, 1.15vw, 22px); font-weight: 700; }
-.levelCard small, .reviveCard > div small, .blindGrid article > div small { margin-top: .4vh; color: #91c5aa; font-size: clamp(8px, .58vw, 11px); letter-spacing: .18em; }
-.levelCard > strong { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: clamp(68px, 8.2vw, 148px); line-height: .9; text-shadow: 0 12px 32px rgb(0 0 0 / 18%); }
+.levelCard span, .reviveCard > div span, .blindGrid article span { font-size: 22px; font-size: clamp(14px, 1.15vw, 22px); font-weight: 700; }
+.levelCard small, .reviveCard > div small, .blindGrid article > div small { margin-top: .4vh; color: #91c5aa; font-size: 11px; font-size: clamp(8px, .58vw, 11px); letter-spacing: .18em; }
+.levelCard > strong { color: var(--lime); font-family: "Noto Serif SC", serif; font-size: 148px; font-size: clamp(68px, 8.2vw, 148px); line-height: .9; text-shadow: 0 12px 32px rgb(0 0 0 / 18%); }
 .playerMeta { min-width: 155px; justify-self: end; margin: 0; display: flex; flex-direction: column; align-items: flex-end; color: #c0dacd; }
-.playerMeta > span { font-size: clamp(13px, 1.2vw, 22px); }
+.playerMeta > span { font-size: 22px; font-size: clamp(13px, 1.2vw, 22px); }
 .playerMeta > span b { color: #fff; font-size: 1.7em; }
-.playerMeta > small { margin-top: 5px; display: flex; align-items: center; gap: 8px; color: #e4efe9; font-size: clamp(9px, .68vw, 12px); white-space: nowrap; }
+.playerMeta > small { margin-top: 5px; display: flex; align-items: center; gap: 8px; color: #e4efe9; font-size: 12px; font-size: clamp(9px, .68vw, 12px); white-space: nowrap; }
 .playerMeta > small i { min-width: 48px; color: #83a293; font-size: .88em; font-style: normal; letter-spacing: .06em; text-align: right; }
 
 .blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--card-gap); }
@@ -143,8 +147,8 @@
   border-radius: 18px;
   background: rgb(6 31 23 / 78%);
 }
-.blindGrid article > strong { align-self: center; overflow: hidden; color: #fff; font-family: "Noto Serif SC", serif; font-size: clamp(68px, 8vw, 145px); line-height: 1; text-overflow: ellipsis; }
-.blindGrid article > i { justify-self: end; color: rgb(200 241 90 / 42%); font-size: clamp(18px, 2vw, 34px); font-style: normal; font-weight: 700; letter-spacing: .1em; }
+.blindGrid article > strong { align-self: center; overflow: hidden; color: #fff; font-family: "Noto Serif SC", serif; font-size: 145px; font-size: clamp(68px, 8vw, 145px); line-height: 1; text-overflow: ellipsis; }
+.blindGrid article > i { justify-self: end; color: rgb(200 241 90 / 42%); font-size: 34px; font-size: clamp(18px, 2vw, 34px); font-style: normal; font-weight: 700; letter-spacing: .1em; }
 .bigBlind { background: linear-gradient(145deg, rgb(10 68 48 / 86%), rgb(6 31 23 / 80%)) !important; }
 .bigBlind > strong { color: var(--lime) !important; }
 
@@ -165,10 +169,10 @@
 .reviveCard > section:first-of-type { grid-column: 1; grid-row: 2; }
 .reviveCard > section:last-of-type { position: relative; grid-column: 2; grid-row: 2; }
 .reviveCard > section:last-of-type::before { content: ""; position: absolute; top: 0; bottom: 0; left: calc(0px - var(--half-card-gap)); width: 1px; background: rgb(172 222 193 / 16%); }
-.reviveCard > section > span { color: var(--muted); font-size: clamp(10px, .85vw, 15px); }
-.reviveCard > section > strong { margin-top: .5vh; display: flex; align-items: baseline; gap: .7vw; color: #fff; font-family: "Noto Serif SC", serif; font-size: clamp(36px, 4vw, 72px); line-height: 1; }
-.reviveCard > section > strong > small { color: #88a396; font: clamp(9px, .72vw, 13px) "Noto Sans SC", sans-serif; white-space: nowrap; }
-.nextRevive { margin-top: 8px; display: block; color: rgb(187 214 200 / 52%); font-size: clamp(10px, .72vw, 13px); font-style: normal; }
+.reviveCard > section > span { color: var(--muted); font-size: 15px; font-size: clamp(10px, .85vw, 15px); }
+.reviveCard > section > strong { margin-top: .5vh; display: flex; align-items: baseline; gap: .7vw; color: #fff; font-family: "Noto Serif SC", serif; font-size: 72px; font-size: clamp(36px, 4vw, 72px); line-height: 1; }
+.reviveCard > section > strong > small { color: #88a396; font: 13px "Noto Sans SC", sans-serif; font: clamp(9px, .72vw, 13px) "Noto Sans SC", sans-serif; white-space: nowrap; }
+.nextRevive { margin-top: 8px; display: block; color: rgb(187 214 200 / 52%); font-size: 13px; font-size: clamp(10px, .72vw, 13px); font-style: normal; }
 .nextRevive b { margin-left: 5px; color: rgb(220 236 228 / 72%); font-weight: 500; }
 
 .empty { min-height: 52vh; display: flex; flex-direction: column; align-items: center; justify-content: center; color: var(--muted); text-align: center; }
@@ -224,13 +228,13 @@
   grid-template-rows: .72fr 1.18fr .8fr;
 }
 .panelOpen .levelCard { padding-inline: var(--state-gutter); }
-.panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
+.panelOpen .levelCard > strong { font-size: 132px; font-size: clamp(74px, 8.6vw, 132px); }
 .panelOpen .blindGrid { gap: var(--card-gap); }
-.panelOpen .blindGrid article > strong { font-size: clamp(64px, 6.4vw, 104px); }
+.panelOpen .blindGrid article > strong { font-size: 104px; font-size: clamp(64px, 6.4vw, 104px); }
 .panelOpen .reviveCard { padding: 3vh 0 22px; grid-template-columns: 1fr 1fr; column-gap: var(--card-gap); row-gap: 8px; }
 .panelOpen .reviveCard > div { grid-column: 1 / -1; }
 .panelOpen .reviveCard > section { border-left: 0; }
-.panelOpen .reviveCard > section > strong { gap: 5px; font-size: clamp(30px, 3.2vw, 54px); }
+.panelOpen .reviveCard > section > strong { gap: 5px; font-size: 54px; font-size: clamp(30px, 3.2vw, 54px); }
 .panelOpen .reviveCard > section > strong > small { font-size: 9px; }
 .panelOpen .nextRevive { margin-top: 7px; font-size: 10px; transform: translateY(8px); }
 .controlHead {

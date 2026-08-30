@@ -56,6 +56,15 @@ test("电视看板可通过 /display 打开", async () => {
   assert.doesNotMatch(html, /打开更多牌桌控制/);
 });
 
+test("电视 APK 页面不包含旧 WebView 无法解析的首屏语法", async () => {
+  const response = await render("/display?tvapp=1&apk=test");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.doesNotMatch(html, /\?\?=/);
+  assert.match(html, /width=1920,user-scalable=no/);
+});
+
 test("旧的 /score 路径不再兼容", async () => {
   const response = await render("/score");
   assert.equal(response.status, 404);

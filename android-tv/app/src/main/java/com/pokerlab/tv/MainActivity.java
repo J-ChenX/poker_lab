@@ -38,7 +38,7 @@ import android.widget.TextView;
  * connection recovery and translating remote-control keys into DOM keyboard events.
  */
 public final class MainActivity extends Activity {
-    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1";
+    private static final String DISPLAY_URL = "https://tv.example.com/display?tvapp=1&apk=2.1.0";
     private static final String PREFS = "poker_lab_tv";
     private static final String PREF_AUTH_USERNAME = "auth_username";
     private static final String PREF_AUTH_PASSWORD = "auth_password";
@@ -77,6 +77,8 @@ public final class MainActivity extends Activity {
         webView.setFocusableInTouchMode(true);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        webView.setInitialScale(0);
+        webView.clearCache(true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -88,15 +90,19 @@ public final class MainActivity extends Activity {
         settings.setBuiltInZoomControls(false);
         settings.setDisplayZoomControls(false);
         settings.setTextZoom(100);
+        settings.setMinimumFontSize(1);
+        settings.setMinimumLogicalFontSize(1);
+        settings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
         settings.setMediaPlaybackRequiresUserGesture(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
-        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
-        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.0");
+        settings.setCacheMode(WebSettings.LOAD_NO_CACHE);
+        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.1");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) settings.setSafeBrowsingEnabled(true);
 
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                view.setInitialScale(0);
                 pageReady = false;
                 mainFrameFailed = false;
                 hideConnectionError();
@@ -190,14 +196,14 @@ public final class MainActivity extends Activity {
         webView.loadUrl(DISPLAY_URL);
     }
 
-    /** Forces a 1920px desktop canvas and installs the remote-control event bridge. */
+    /** Keeps the 1920px canvas fitted to the TV and installs the remote-control event bridge. */
     private void installTvRuntime() {
         if (webView == null) return;
         webView.evaluateJavascript(
             "(function(){" +
                 "var m=document.querySelector('meta[name=viewport]');" +
                 "if(!m){m=document.createElement('meta');m.name='viewport';document.head.appendChild(m);}" +
-                "m.content='width=1920,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no';" +
+                "m.content='width=1920,user-scalable=no,viewport-fit=cover';" +
                 "document.documentElement.style.background='#071812';" +
                 "document.body.style.margin='0';" +
                 "window.__pokerLabTvKey=function(type,key,repeat){" +

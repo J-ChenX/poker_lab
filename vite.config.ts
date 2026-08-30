@@ -44,6 +44,7 @@ export default defineConfig(async () => {
   const { cloudflare } = await import("@cloudflare/vite-plugin");
 
   return {
+    build: { target: "chrome61" },
     server: {
       host: "0.0.0.0",
       allowedHosts: ["tv.example.com"],
