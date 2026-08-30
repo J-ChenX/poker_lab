@@ -45,6 +45,15 @@ test("计算器保留在 /calculate", async () => {
   assert.match(html, /你的底牌/);
 });
 
+test("电视看板可通过 /display 打开", async () => {
+  const response = await render("/display");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /牌桌实时看板/);
+  assert.match(html, /实时积分排名/);
+});
+
 test("旧的 /score 路径不再兼容", async () => {
   const response = await render("/score");
   assert.equal(response.status, 404);

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { CSSProperties, FormEvent, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BLIND_LEVELS, knockoutBase, knockoutShare, placementScore, reviveCost, scoringPlaceCount } from "./rules";
+import CastControl from "./cast-control";
 import styles from "./score.module.css";
 
 type Player = { name: string; score: number };
@@ -260,7 +261,7 @@ export default function Scorekeeper() {
     <main className={styles.shell}>
       <header className={styles.header}>
         <Link className={styles.brand} href="/"><span>♠</span><strong>牌桌积分簿</strong></Link>
-        <div className={styles.headerMeta}><span className={styles.liveDot} />所有设备自动同步</div>
+        <div className={styles.headerTools}><div className={styles.headerMeta}><span className={styles.liveDot} />所有设备自动同步</div><CastControl /></div>
       </header>
 
       <section className={styles.statusBoard} aria-label="当前牌桌状态">

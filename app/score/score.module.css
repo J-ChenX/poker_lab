@@ -87,6 +87,55 @@
   font-size: 11px;
 }
 
+.headerTools,
+.castActions {
+  display: flex;
+  align-items: center;
+}
+
+.headerTools { justify-self: end; gap: 18px; }
+.castActions { gap: 8px; }
+
+.displayLink,
+.castButton {
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.displayLink {
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  color: #53625a;
+  background: rgb(255 255 255 / 55%);
+}
+
+.castButton {
+  gap: 8px;
+  min-width: 126px;
+  padding: 0 13px;
+  border: 0;
+  color: #fff;
+  background: var(--green);
+  box-shadow: 0 7px 18px rgb(11 98 66 / 18%);
+  cursor: pointer;
+}
+
+.castButton:disabled { opacity: .68; cursor: wait; }
+.castButtonConnected { color: #153b2b; background: #c7ed74; }
+.castIcon { position: relative; width: 16px; height: 13px; display: block; border: 1.6px solid currentColor; border-radius: 2px; }
+.castIcon::before,
+.castIcon::after,
+.castIcon i { content: ""; position: absolute; left: -2px; bottom: -2px; border: 1.8px solid currentColor; border-top-color: transparent; border-right-color: transparent; border-radius: 0 0 0 7px; }
+.castIcon::before { width: 6px; height: 6px; }
+.castIcon::after { width: 2px; height: 2px; }
+.castIcon i { display: none; }
+
 .liveDot {
   width: 7px;
   height: 7px;
@@ -993,6 +1042,7 @@
 }
 
 @media (max-width: 820px) {
+  .headerMeta { display: none; }
   .dashboard {
     grid-template-columns: minmax(0, 1fr);
     gap: 12px;
@@ -1027,7 +1077,10 @@
     letter-spacing: .03em;
   }
 
-  .headerMeta { display: none; }
+  .headerTools { gap: 0; }
+  .displayLink { display: none; }
+  .castButton { min-width: 0; height: 34px; padding-inline: 10px; }
+  .castButton b { font-size: 10px; }
   .statusBoard {
     width: calc(100% - 16px);
     margin: 12px auto;
