@@ -86,6 +86,11 @@ export default function DisplayPage() {
     void mutateState({ type: "setGame", playerCount: state.playerCount, currentLevel: state.currentLevel + 1, rankedPlayers: state.rankedPlayers });
   };
 
+  const closeControls = useCallback(() => {
+    setControlOpen(false);
+    window.requestAnimationFrame(() => advanceLevelRef.current?.focus());
+  }, []);
+
   return <main className={`${styles.screen} ${controlOpen ? styles.panelOpen : ""}`}>
     <header className={styles.header}>
       <div className={styles.brand}><span>♠</span><div><strong>牌桌实时看板</strong><small>POKER TABLE LIVE</small></div></div>
@@ -131,6 +136,6 @@ export default function DisplayPage() {
         </div>
       </section>
     </section>
-    {controlOpen && state && <DisplayControlPanel state={state} busy={mutating} onClose={() => setControlOpen(false)} onMutate={mutateState} />}
+    {controlOpen && state && <DisplayControlPanel state={state} busy={mutating} onClose={closeControls} onMutate={mutateState} />}
   </main>;
 }

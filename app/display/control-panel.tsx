@@ -22,20 +22,21 @@ type RemoteDirection = "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight";
 
 const formatNumber = (value: number) => value.toLocaleString("zh-CN");
 const remoteFocusableSelector = "button:not(:disabled), select:not(:disabled), [tabindex='0']";
+const noUnavailablePlayers = new Set<string>();
 
 function moveRemoteFocus(container: HTMLElement, direction: RemoteDirection) {
   const focusable = Array.from(container.querySelectorAll<HTMLElement>(remoteFocusableSelector)).filter((element) => {
     const rect = element.getBoundingClientRect();
     return rect.width > 0 && rect.height > 0 && window.getComputedStyle(element).visibility !== "hidden";
   });
-  if (!focusable.length) return;
+  if (!focusable.length) return false;
 
   const active = document.activeElement instanceof HTMLElement && container.contains(document.activeElement)
     ? document.activeElement
     : null;
   if (!active) {
     focusable[0].focus();
-    return;
+    return true;
   }
 
   const source = active.getBoundingClientRect();
@@ -61,15 +62,19 @@ function moveRemoteFocus(container: HTMLElement, direction: RemoteDirection) {
     }
   }
 
-  target?.focus({ preventScroll: true });
-  target?.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  if (!target) return false;
+  target.focus({ preventScroll: true });
+  target.scrollIntoView({ block: "nearest", inline: "nearest", behavior: "smooth" });
+  return true;
 }
 
-function RankPlayerSelect({ value, players, unavailableNames, label, disabled, onChange }: {
+function RankPlayerSelect({ value, players, unavailableNames, label, placeholder = "选择牌手", remoteTarget, disabled, onChange }: {
   value: string;
   players: DisplayPlayer[];
   unavailableNames: Set<string>;
   label: string;
+  placeholder?: string;
+  remoteTarget?: "rank" | "revive";
   disabled: boolean;
   onChange: (name: string) => void;
 }) {
@@ -98,19 +103,31 @@ function RankPlayerSelect({ value, players, unavailableNames, label, disabled, o
   }, [open]);
 
   return <div className={styles.rankPlayerSelect} ref={rootRef}>
-    <button ref={triggerRef} className={`${styles.rankSelectTrigger} ${open ? styles.rankSelectTriggerOpen : ""} ${value ? styles.rankSelectTriggerFilled : ""}`} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => {
+    <button ref={triggerRef} data-tv-target={remoteTarget} className={`${styles.rankSelectTrigger} ${open ? styles.rankSelectTriggerOpen : ""} ${value ? styles.rankSelectTriggerFilled : ""}`} type="button" aria-label={label} aria-haspopup="listbox" aria-expanded={open} disabled={disabled} onClick={() => setOpen((current) => !current)} onKeyDown={(event) => {
       if (event.key === "Escape" && open) {
         event.stopPropagation();
         closeMenu();
       }
     }}>
-      <span>{value ? <><i>{value.slice(0, 2).toUpperCase()}</i><b>{value}</b></> : <b>{players.length ? "选择牌手" : "暂无牌手"}</b>}</span>
+      <span>{value ? <><i>{value.slice(0, 2).toUpperCase()}</i><b>{value}</b></> : <b>{players.length ? placeholder : "暂无牌手"}</b>}</span>
       <em aria-hidden="true">⌄</em>
     </button>
     {open && <div ref={menuRef} className={styles.rankSelectMenu} role="listbox" aria-label={label} tabIndex={-1} onKeyDown={(event) => {
       if (event.key === "Escape") {
         event.stopPropagation();
         closeMenu();
+        return;
+      }
+      if (event.key === "ArrowUp" || event.key === "ArrowDown") {
+        event.preventDefault();
+        event.stopPropagation();
+        const options = Array.from(menuRef.current?.querySelectorAll<HTMLElement>(remoteFocusableSelector) ?? []);
+        if (!options.length) return;
+        const currentIndex = options.indexOf(document.activeElement as HTMLElement);
+        const step = event.key === "ArrowDown" ? 1 : -1;
+        const nextIndex = Math.min(options.length - 1, Math.max(0, currentIndex + step));
+        options[nextIndex].focus({ preventScroll: true });
+        options[nextIndex].scrollIntoView({ block: "nearest" });
       }
     }}>
       {value && <button className={styles.rankClearOption} type="button" onClick={() => { onChange(""); closeMenu(); }}><span>清除选择</span><small>×</small></button>}
@@ -230,7 +247,17 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
       if (!["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight"].includes(event.key)) return;
       if (active instanceof HTMLSelectElement) return;
       event.preventDefault();
-      if (panelRef.current) moveRemoteFocus(panelRef.current, event.key as RemoteDirection);
+      if (!panelRef.current) return;
+      if (event.key === "ArrowDown" && active instanceof HTMLElement && Number(active.dataset.tvLevel) >= 6) {
+        const firstRank = panelRef.current.querySelector<HTMLElement>("[data-tv-target='rank']:not(:disabled)");
+        if (firstRank) {
+          firstRank.focus({ preventScroll: true });
+          firstRank.scrollIntoView({ block: "nearest", behavior: "smooth" });
+          return;
+        }
+      }
+      const moved = moveRemoteFocus(panelRef.current, event.key as RemoteDirection);
+      if (!moved && event.key === "ArrowLeft") onClose();
     }}>
       <header className={styles.controlHead}>
         <div><h2 id="display-control-title">牌桌控制</h2></div>
@@ -248,7 +275,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
           <div className={styles.controlSectionTitle}><strong>当前盲注等级</strong></div>
           <div className={styles.compactLevels}>{BLIND_LEVELS.map((blind) => {
             const levelReviveCost = reviveCost(state.playerCount, blind.level);
-            return <button className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}>
+            return <button data-tv-level={blind.level} className={blind.level === state.currentLevel ? styles.controlSelected : ""} type="button" disabled={busy} key={blind.level} onClick={() => changeLevel(blind.level)}>
               <b>L{blind.level}</b>
               <span>{formatNumber(blind.small)} / {formatNumber(blind.big)}</span>
               <em className={styles.levelReviveCost}>{levelReviveCost && blind.chips ? `${levelReviveCost}/${blind.chips}` : "—/—"}</em>
@@ -260,7 +287,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
           <div className={styles.controlSectionTitle}><strong>计分名次</strong></div>
           <div className={styles.controlRanks}>{Array.from({ length: paidPlaces }, (_, index) => {
             const current = state.rankedPlayers[index] ?? "";
-            return <div className={styles.controlRankRow} key={index}><span><i>{index + 1}</i><b>第 {index + 1} 名</b><small>＋{placementScore(state.playerCount, index + 1)} 分</small></span><RankPlayerSelect value={current} players={sortedPlayers} unavailableNames={new Set(selectedRanks.filter((name) => name !== current))} label={`选择第 ${index + 1} 名牌手`} disabled={busy || !state.players.length} onChange={(name) => changeRank(index, name)} /></div>;
+            return <div className={styles.controlRankRow} key={index}><span><i>{index + 1}</i><b>第 {index + 1} 名</b><small>＋{placementScore(state.playerCount, index + 1)} 分</small></span><RankPlayerSelect value={current} players={sortedPlayers} unavailableNames={new Set(selectedRanks.filter((name) => name !== current))} label={`选择第 ${index + 1} 名牌手`} remoteTarget="rank" disabled={busy || !state.players.length} onChange={(name) => changeRank(index, name)} /></div>;
           })}</div>
           <button className={styles.settleButton} type="button" disabled={busy || !state.players.length} onClick={settlePlacement}>确认结算名次积分 <span>→</span></button>
         </section>
@@ -273,7 +300,7 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
           </div>
 
           {actionMode === "knockout" && <div className={styles.actionEditor}><p>选择一位或多位得分人员；多人共同淘汰时，每人获得 ＋{knockoutPoints} 分。</p><div className={styles.playerChips}>{sortedPlayers.map((player) => <button className={knockoutWinners.includes(player.name) ? styles.controlSelected : ""} type="button" disabled={busy} key={player.name} onClick={() => toggleKnockoutWinner(player.name)}><span>{player.name}</span><small>{knockoutWinners.includes(player.name) ? `＋${knockoutPoints}` : "选择"}</small></button>)}</div><button className={styles.actionConfirm} type="button" disabled={busy || !knockoutWinners.length} onClick={applyKnockout}>确认淘汰加分</button></div>}
-          {actionMode === "revive" && <div className={styles.actionEditor}><p>L{state.currentLevel} 单次复活扣除 {unitReviveCost} 分，并获得 {formatNumber(currentBlind.chips ?? 0)} 筹码。</p><select aria-label="选择复活人员" value={revivePlayer} disabled={busy} onChange={(event) => setRevivePlayer(event.target.value)}><option value="">选择复活人员</option>{sortedPlayers.map((player) => <option value={player.name} key={player.name}>{player.name}（{player.score} 分）</option>)}</select><button className={styles.actionConfirm} type="button" disabled={busy || !revivePlayer} onClick={applyRevive}>确认一次复活扣分</button></div>}
+          {actionMode === "revive" && <div className={styles.actionEditor}><p>L{state.currentLevel} 单次复活扣除 {unitReviveCost} 分，并获得 {formatNumber(currentBlind.chips ?? 0)} 筹码。</p><RankPlayerSelect value={revivePlayer} players={sortedPlayers} unavailableNames={noUnavailablePlayers} label="选择复活人员" placeholder="选择复活人员" remoteTarget="revive" disabled={busy} onChange={setRevivePlayer} /><button className={styles.actionConfirm} type="button" disabled={busy || !revivePlayer} onClick={applyRevive}>确认一次复活扣分</button></div>}
         </section>
       </div>
     </aside>

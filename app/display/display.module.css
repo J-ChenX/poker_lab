@@ -313,8 +313,7 @@
 .rankSelectMenu .rankOptionSelected { color: #0b6242; background: #e4f3eb; }
 .rankSelectMenu .rankClearOption { min-height: 38px; grid-template-columns: 1fr 20px; color: #944f47; }
 .rankSelectMenu .rankClearOption small { font-size: 15px; text-align: center; }
-.actionEditor select { width: 100%; min-width: 0; height: 40px; padding: 0 10px; border: 1px solid rgb(172 222 193 / 18%); border-radius: 8px; color: #eaf4ee; background: #102d23; font-size: 11px; }
-.actionEditor select:focus { outline: 1px solid var(--lime); border-color: var(--lime); }
+.actionEditor .rankPlayerSelect { width: 100%; }
 .settleButton, .actionConfirm { width: 100%; min-height: 48px; margin-top: 12px; border: 0; border-radius: 10px; color: #10291f; background: var(--lime); font-weight: 800; cursor: pointer; }
 .settleButton span { margin-left: 6px; }
 .settleButton:hover, .settleButton:focus-visible, .actionConfirm:hover, .actionConfirm:focus-visible { outline: 2px solid rgb(200 241 90 / 35%); outline-offset: 3px; filter: brightness(1.05); }
