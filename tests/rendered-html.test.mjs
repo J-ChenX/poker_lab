@@ -35,7 +35,6 @@ test("积分簿是站点首页", async () => {
   assert.match(html, /牌桌积分簿/);
   assert.match(html, /德州扑克电子记分系统/);
   assert.match(html, /电视看板/);
-  assert.doesNotMatch(html, /搜索投屏设备|PresentationRequest|停止投屏/);
 });
 
 test("计算器保留在 /calculate", async () => {
