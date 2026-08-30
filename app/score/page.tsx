@@ -272,8 +272,8 @@ export default function Scorekeeper() {
 
       <section className={styles.dashboard}>
         <aside className={styles.roster}>
-          <div className={styles.panelHead}><div><span>01</span><h2>人员与积分</h2></div><div className={styles.panelTools}><small>{hydrated ? `${players.length} 人` : "读取中"}</small><button className={styles.resetScores} type="button" onClick={resetAllScores} disabled={!players.length}>积分清零</button></div></div>
-          <form className={styles.registerForm} onSubmit={addPlayer}><label><span>添加人员</span><input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={20} placeholder="输入姓名或昵称" /></label><button disabled={!newName.trim()}>＋ 添加</button></form>
+          <div className={styles.panelHead}><div><span>01</span><h2>人员与积分</h2></div><div className={styles.panelTools}><button className={styles.resetScores} type="button" onClick={resetAllScores} disabled={!players.length}>积分清零</button></div></div>
+          <form className={styles.registerForm} onSubmit={addPlayer}><label><span><b>添加人员</b><small>{hydrated ? `${players.length} 人` : "读取中"}</small></span><input value={newName} onChange={(event) => setNewName(event.target.value)} maxLength={20} placeholder="输入姓名或昵称" /></label><button disabled={!newName.trim()}>＋ 添加</button></form>
           <div className={styles.peopleList}>{hydrated && players.length === 0 && <div className={styles.empty}><b>还没有人员</b><span>添加姓名后即可开始记分。</span></div>}{sortedPlayers.map((player, index) => <div className={styles.person} key={player.name}><i>{index + 1}</i><span className={styles.avatar}>{player.name.slice(0, 2).toUpperCase()}</span><p><strong>{player.name}</strong><small>{player.score < 0 ? "负积分" : index === 0 ? "当前领先" : "积分账户"}</small></p><b className={player.score < 0 ? styles.negative : ""}>{player.score}<small>分</small></b><button className={styles.deletePerson} type="button" onClick={() => deletePlayer(player.name)} aria-label={`删除 ${player.name}`}>×</button></div>)}</div>
         </aside>
 

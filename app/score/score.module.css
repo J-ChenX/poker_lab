@@ -238,10 +238,20 @@
 }
 
 .registerForm label > span {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   margin-bottom: 7px;
   color: var(--muted);
   font-size: 10px;
+}
+
+.registerForm label > span > b { font-weight: 400; }
+.registerForm label > span > small {
+  color: #7d8881;
+  font-size: 10px;
+  white-space: nowrap;
 }
 
 .registerForm input,
