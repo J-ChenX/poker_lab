@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import "@fontsource/noto-sans-sc/chinese-simplified-400.css";
-import "@fontsource/noto-sans-sc/chinese-simplified-500.css";
-import "@fontsource/noto-sans-sc/chinese-simplified-600.css";
 import "@fontsource/noto-sans-sc/chinese-simplified-700.css";
-import "@fontsource/noto-serif-sc/chinese-simplified-500.css";
 import "@fontsource/noto-serif-sc/chinese-simplified-600.css";
 
 export const metadata: Metadata = {
