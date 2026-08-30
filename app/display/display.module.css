@@ -123,6 +123,7 @@
 
 .gameState {
   --card-gap: 1.5vh;
+  --state-gutter: 2.2vw;
   min-width: 0;
   display: grid;
   grid-template-rows: .74fr 1.2fr .82fr;
@@ -131,7 +132,7 @@
 
 .levelCard {
   min-height: 0;
-  padding: 2vh 2.4vw;
+  padding: 2vh var(--state-gutter);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
@@ -152,7 +153,7 @@
 .blindGrid { min-height: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--card-gap); }
 .blindGrid article {
   min-width: 0;
-  padding: 2.2vh 2.2vw;
+  padding: 2.2vh var(--state-gutter);
   display: grid;
   grid-template-rows: auto 1fr auto;
   overflow: hidden;
@@ -166,15 +167,20 @@
 
 .reviveCard {
   min-height: 0;
-  padding: 2vh 2.3vw;
+  padding: 2vh 0;
   display: grid;
-  grid-template-columns: .72fr 1fr 1fr;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-rows: auto 1fr;
   align-items: center;
-  gap: 2vw;
+  column-gap: var(--card-gap);
+  row-gap: .8vh;
   border-radius: 18px;
   background: linear-gradient(120deg, rgb(255 255 255 / 6%), rgb(7 33 24 / 72%));
 }
-.reviveCard > section { min-width: 0; padding-left: 2vw; display: flex; flex-direction: column; border-left: 1px solid rgb(172 222 193 / 16%); }
+.reviveCard > div { grid-column: 1; grid-row: 1; padding-left: var(--state-gutter); }
+.reviveCard > section { min-width: 0; padding-left: var(--state-gutter); display: flex; flex-direction: column; }
+.reviveCard > section:first-of-type { grid-column: 1; grid-row: 2; }
+.reviveCard > section:last-of-type { grid-column: 2; grid-row: 2; border-left: 1px solid rgb(172 222 193 / 16%); }
 .reviveCard > section > span { color: var(--muted); font-size: clamp(10px, .85vw, 15px); }
 .reviveCard > section > strong { margin-top: .5vh; display: flex; align-items: baseline; gap: .7vw; color: #fff; font-family: "Noto Serif SC", serif; font-size: clamp(36px, 4vw, 72px); line-height: 1; }
 .reviveCard > section > strong > small { color: #88a396; font: clamp(9px, .72vw, 13px) "Noto Sans SC", sans-serif; white-space: nowrap; }
@@ -225,14 +231,14 @@
   height: 100%;
   grid-template-rows: .72fr 1.18fr .8fr;
 }
-.panelOpen .levelCard { padding-inline: 2.2vw; }
+.panelOpen .levelCard { padding-inline: var(--state-gutter); }
 .panelOpen .levelCard > strong { font-size: clamp(74px, 8.6vw, 132px); }
 .panelOpen .blindGrid { gap: var(--card-gap); }
 .panelOpen .blindGrid article > strong { font-size: clamp(64px, 6.4vw, 104px); }
-.panelOpen .reviveCard { padding: 20px 24px 22px; grid-template-columns: 1fr 1fr; gap: 8px 20px; }
+.panelOpen .reviveCard { padding: 20px 0 22px; grid-template-columns: 1fr 1fr; column-gap: var(--card-gap); row-gap: 8px; }
 .panelOpen .reviveCard > div { grid-column: 1 / -1; }
-.panelOpen .reviveCard > section { padding-left: 0; border-left: 0; }
-.panelOpen .reviveCard > section:last-child { padding-left: 20px; border-left: 1px solid rgb(172 222 193 / 16%); }
+.panelOpen .reviveCard > section { border-left: 0; }
+.panelOpen .reviveCard > section:last-child { border-left: 1px solid rgb(172 222 193 / 16%); }
 .panelOpen .reviveCard > section > strong { gap: 5px; font-size: clamp(30px, 3.2vw, 54px); }
 .panelOpen .reviveCard > section > strong > small { font-size: 9px; }
 .panelOpen .nextRevive { margin-top: 7px; font-size: 8px; transform: translateY(8px); }
@@ -380,18 +386,19 @@
   .dashboard { padding-top: 12px; gap: 10px; }
   .playerList { grid-template-columns: 1fr; }
   .playerList article { min-height: 60px; padding: 8px; grid-template-columns: 25px 38px minmax(0, 1fr) auto; gap: 8px; }
-  .gameState { --card-gap: 8px; min-height: 620px; grid-template-rows: .62fr 1.25fr 1fr; }
-  .levelCard { padding: 16px; grid-template-columns: 1fr auto; }
+  .gameState { --card-gap: 8px; --state-gutter: 14px; min-height: 620px; grid-template-rows: .62fr 1.25fr 1fr; }
+  .levelCard { padding: 16px var(--state-gutter); grid-template-columns: 1fr auto; }
   .playerMeta { min-width: 122px; }
   .playerMeta > span { font-size: 12px; }
   .playerMeta > small { gap: 5px; font-size: 8px; }
   .playerMeta > small i { min-width: 40px; }
   .blindGrid { gap: var(--card-gap); }
-  .blindGrid article { padding: 14px; }
+  .blindGrid article { padding: 14px var(--state-gutter); }
   .blindGrid article > strong { font-size: clamp(40px, 13vw, 68px); }
-  .reviveCard { padding: 16px; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .reviveCard { padding: 16px 0; grid-template-columns: 1fr 1fr; column-gap: var(--card-gap); row-gap: 12px; }
   .reviveCard > div { grid-column: 1 / -1; }
-  .reviveCard > section { padding-left: 0; border-left: 0; }
+  .reviveCard > section { padding-left: var(--state-gutter); border-left: 0; }
+  .reviveCard > section:last-of-type { border-left: 1px solid rgb(172 222 193 / 16%); }
   .reviveCard > section > strong { flex-direction: column; gap: 5px; font-size: 34px; }
   .controlPanel { width: 100vw; }
   .controlHead { min-height: 96px; padding: 17px 16px; }
