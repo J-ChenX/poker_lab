@@ -77,7 +77,9 @@ test("电视 APK 为旧 WebView 保留原生像素看板与内置字体", async 
     fileURLToPath(new URL("../android-tv/app/src/main/assets/fonts/noto-serif-sc-display.ttf", import.meta.url)),
   );
   assert.match(source, /createNativeDashboard\(boolean compact\)/);
-  assert.match(source, /compact \? px\(768\)/);
+  assert.match(source, /compact \? px\(614\)/);
+  assert.match(source, /metrics\.widthPixels \* 0\.68/);
+  assert.doesNotMatch(source, /textPx\("01"/);
   assert.match(source, /displaySerif/);
   assert.match(source, /getRealMetrics\(realMetrics\)/);
   assert.match(source, /Math\.round\(px\(size\) \* 1\.5f\)/);

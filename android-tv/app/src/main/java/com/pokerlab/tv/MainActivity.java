@@ -148,7 +148,7 @@ public final class MainActivity extends Activity {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
-        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/2.6.0");
+        settings.setUserAgentString(settings.getUserAgentString() + " PokerLabTV/" + BuildConfig.VERSION_NAME);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_NEVER_ALLOW);
         webView.setWebViewClient(new WebViewClient() {
             @Override public void onPageFinished(WebView view, String url) {
@@ -202,7 +202,7 @@ public final class MainActivity extends Activity {
 
     private void loadDashboard() {
         setConnectionText("正在连接", false);
-        webView.loadUrl(baseUrl + "/display?tvapp=1&apk=2.6.0");
+        webView.loadUrl(baseUrl + "/display?tvapp=1&apk=" + BuildConfig.VERSION_NAME);
     }
 
     private void refreshState(boolean rebuildPanel) {
@@ -234,7 +234,7 @@ public final class MainActivity extends Activity {
         TextView brandSub = textPx("POKER TABLE LIVE", 4, Color.rgb(112, 154, 132), false);
         brandSub.setLetterSpacing(0.22f);
         brandCopy.addView(brandTitle, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(12)));
-        brandCopy.addView(brandSub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(6)));
+        if (!compact) brandCopy.addView(brandSub, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(6)));
         LinearLayout.LayoutParams brandCopyParams = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1);
         brandCopyParams.leftMargin = px(7);
         header.addView(brandCopy, brandCopyParams);
@@ -248,15 +248,10 @@ public final class MainActivity extends Activity {
         ranking.setPadding(px(24), px(24), px(24), px(24));
         ranking.setBackground(roundedPx(Color.argb(153, 5, 23, 17), 8, 1, Color.rgb(24, 63, 47)));
         LinearLayout rankingHead = row();
-        TextView rankingIndex = textPx("01", 6, LIME, false);
-        rankingIndex.setGravity(Gravity.CENTER);
-        rankingIndex.setBackground(roundedPx(Color.TRANSPARENT, 6, 1, Color.rgb(90, 128, 37)));
-        rankingHead.addView(rankingIndex, new LinearLayout.LayoutParams(px(16), px(16)));
         TextView rankingTitle = textPx("实时积分排名", 16, TEXT, true);
         rankingTitle.setTypeface(displaySerif, android.graphics.Typeface.BOLD);
         rankingTitle.getPaint().setFakeBoldText(true);
         LinearLayout.LayoutParams rankingTitleParams = new LinearLayout.LayoutParams(0, px(32), 1);
-        rankingTitleParams.leftMargin = px(8);
         rankingHead.addView(rankingTitle, rankingTitleParams);
         nativePlayerTotal = textPx("0 位牌手", 6, MUTED, false);
         nativePlayerTotal.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
@@ -517,7 +512,7 @@ public final class MainActivity extends Activity {
         if (nativeDashboard != null) root.removeView(nativeDashboard);
         nativeDashboard = createNativeDashboard(compact);
         FrameLayout.LayoutParams dashboardParams = new FrameLayout.LayoutParams(
-            compact ? px(768) : ViewGroup.LayoutParams.MATCH_PARENT,
+            compact ? px(614) : ViewGroup.LayoutParams.MATCH_PARENT,
             ViewGroup.LayoutParams.MATCH_PARENT,
             Gravity.START | Gravity.TOP
         );
@@ -529,7 +524,7 @@ public final class MainActivity extends Activity {
         advanceParams.height = px(36);
         advanceParams.gravity = compact ? Gravity.TOP | Gravity.START : Gravity.TOP | Gravity.END;
         advanceParams.topMargin = px(8);
-        advanceParams.leftMargin = compact ? px(623) : 0;
+        advanceParams.leftMargin = compact ? px(469) : 0;
         advanceParams.rightMargin = compact ? 0 : px(58);
         controlButton.setLayoutParams(advanceParams);
         controlButton.bringToFront();
@@ -551,7 +546,7 @@ public final class MainActivity extends Activity {
         Window window = controlDialog.getWindow();
         if (window != null) {
             DisplayMetrics metrics = getResources().getDisplayMetrics();
-            window.setLayout((int) (metrics.widthPixels * 0.60), metrics.heightPixels);
+            window.setLayout((int) (metrics.widthPixels * 0.68), metrics.heightPixels);
             window.setGravity(Gravity.TOP | Gravity.END);
             window.setBackgroundDrawable(gradientPx(new int[]{Color.rgb(13, 48, 36), Color.rgb(7, 28, 21), Color.rgb(6, 22, 17)}, 0));
             window.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND);
@@ -574,36 +569,46 @@ public final class MainActivity extends Activity {
         shell.setBackground(gradientPx(new int[]{Color.rgb(13, 48, 36), Color.rgb(7, 28, 21), Color.rgb(6, 22, 17)}, 0));
 
         LinearLayout header = row();
-        header.setPadding(px(13), 0, px(13), 0);
+        header.setPadding(px(10), 0, px(10), 0);
+        LinearLayout headerCopy = new LinearLayout(this);
+        headerCopy.setOrientation(LinearLayout.VERTICAL);
+        headerCopy.setGravity(Gravity.CENTER_VERTICAL);
+        TextView eyebrow = textPx("TABLE CONTROLS", 4, Color.rgb(159, 193, 68), true);
+        eyebrow.setLetterSpacing(0.17f);
         TextView title = textPx("牌桌控制", 8, TEXT, true);
-        header.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
+        headerCopy.addView(eyebrow, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(6)));
+        headerCopy.addView(title, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, px(12)));
+        header.addView(headerCopy, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
         View headerLine = new View(this);
         headerLine.setBackgroundColor(Color.rgb(25, 66, 50));
         shell.addView(header, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(40)));
-        shell.addView(headerLine, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1)));
+        LinearLayout.LayoutParams headerLineParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(1));
+        headerLineParams.leftMargin = px(10);
+        headerLineParams.rightMargin = px(10);
+        shell.addView(headerLine, headerLineParams);
 
         ScrollView scroll = new ScrollView(this);
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         LinearLayout content = new LinearLayout(this);
         content.setOrientation(LinearLayout.VERTICAL);
-        content.setPadding(px(13), px(11), px(13), px(14));
+        content.setPadding(px(10), px(14), px(10), px(19));
 
         if (state == null) {
             TextView loading = textPx("正在读取牌局状态…", 16, MUTED, false);
             loading.setGravity(Gravity.CENTER);
             content.addView(loading, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(220)));
         } else {
-            content.addView(controlSectionTitle("本局开始人数", 16));
+            content.addView(controlSectionTitle("本局开始人数", 20));
             content.addView(playerCountGrid());
-            content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("当前盲注等级", 16));
+            content.addView(controlDivider(14, 14));
+            content.addView(controlSectionTitle("当前盲注等级", 20));
             content.addView(levelGrid());
-            content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("计分名次", 16));
+            content.addView(controlDivider(14, 14));
+            content.addView(controlSectionTitle("计分名次", 20));
             content.addView(rankControls());
-            content.addView(controlDivider(10, 10));
-            content.addView(controlSectionTitle("即时记分", 16));
+            content.addView(controlDivider(14, 14));
+            content.addView(controlSectionTitle("即时记分", 20));
             content.addView(actionControls());
         }
 
@@ -649,7 +654,7 @@ public final class MainActivity extends Activity {
     }
 
     private View controlSectionTitle(String title, int height) {
-        TextView view = textPx(title, 8, TEXT, true);
+        TextView view = textPx(title, 10, TEXT, true);
         view.setGravity(Gravity.CENTER_VERTICAL);
         view.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(height)));
         return view;
@@ -732,27 +737,27 @@ public final class MainActivity extends Activity {
         LinearLayout tile = new LinearLayout(this);
         tile.setOrientation(LinearLayout.VERTICAL);
         tile.setGravity(Gravity.CENTER_VERTICAL);
-        tile.setPadding(px(5), px(3), px(5), px(3));
+        tile.setPadding(px(7), px(4), px(7), px(4));
         tile.setFocusable(true);
         tile.setClickable(true);
         tile.setBackground(controlChoiceBackground(selected));
 
         LinearLayout top = row();
-        TextView level = textPx("L" + levelNumber, 9, selected ? LIME : TEXT, true);
+        TextView level = textPx("L" + levelNumber, 11, selected ? LIME : TEXT, true);
         level.setTypeface(displaySerif, android.graphics.Typeface.NORMAL);
         top.addView(level, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.MATCH_PARENT, 1));
         int cost = Rulebook.reviveCost(state.playerCount, levelNumber);
         int chips = Rulebook.REVIVE_CHIPS[levelNumber - 1];
-        TextView revival = textPx(cost > 0 && chips > 0 ? cost + "/" + chips : "—/—", 5, selected ? LIME : MUTED, false);
+        TextView revival = textPx(cost > 0 && chips > 0 ? cost + "/" + chips : "—/—", 6, selected ? LIME : MUTED, false);
         revival.setGravity(Gravity.CENTER_VERTICAL | Gravity.END);
-        top.addView(revival, new LinearLayout.LayoutParams(px(56), ViewGroup.LayoutParams.MATCH_PARENT));
-        tile.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(17)));
+        top.addView(revival, new LinearLayout.LayoutParams(px(68), ViewGroup.LayoutParams.MATCH_PARENT));
+        tile.addView(top, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(22)));
         tile.addView(textPx(
             Rulebook.SMALL_BLINDS[levelNumber - 1] + "/" + Rulebook.BIG_BLINDS[levelNumber - 1],
-            5,
+            6,
             MUTED,
             false
-        ), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(11)));
+        ), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(14)));
         return tile;
     }
 
@@ -775,29 +780,29 @@ public final class MainActivity extends Activity {
     }
 
     private View playerCountGrid() {
-        GridLayout grid = grid(10);
-        grid.setPadding(0, px(7), 0, 0);
+        GridLayout grid = grid(5);
+        grid.setPadding(0, px(9), 0, 0);
         firstControlFocus = null;
         for (int count = 3; count <= 12; count++) {
             final int nextCount = count;
-            Button item = controlChoice(count + "人", count == state.playerCount, 8);
+            Button item = controlChoice(count + "人", count == state.playerCount, 10);
             trackControlFocus(item, "player-count-" + count);
             item.setOnClickListener(view -> sendSetGame(nextCount, state.currentLevel, ranksForCount(nextCount), "人数已更新"));
             if (count == state.playerCount) firstControlFocus = item;
-            grid.addView(item, controlGridCell(32, 2, 2, 0, 0));
+            grid.addView(item, controlGridCell(41, 3, 3, 0, 6));
         }
         return grid;
     }
 
     private View levelGrid() {
         GridLayout grid = grid(5);
-        grid.setPadding(0, px(7), 0, 0);
+        grid.setPadding(0, px(9), 0, 0);
         for (int level = 1; level <= 10; level++) {
             final int nextLevel = level;
             LinearLayout item = controlLevelTile(level, level == state.currentLevel);
             trackControlFocus(item, "level-" + level);
             item.setOnClickListener(view -> sendSetGame(state.playerCount, nextLevel, ranksForCount(state.playerCount), "等级已更新"));
-            grid.addView(item, controlGridCell(39, 2, 2, 0, 5));
+            grid.addView(item, controlGridCell(50, 3, 3, 0, 7));
         }
         return grid;
     }
@@ -805,7 +810,7 @@ public final class MainActivity extends Activity {
     private View rankControls() {
         LinearLayout block = new LinearLayout(this);
         block.setOrientation(LinearLayout.VERTICAL);
-        block.setPadding(0, px(7), 0, 0);
+        block.setPadding(0, px(9), 0, 0);
         int places = Rulebook.scoringPlaceCount(state.playerCount);
         for (int rank = 0; rank < places; rank++) {
             String name = rank < state.rankedPlayers.size() ? state.rankedPlayers.get(rank) : "";
@@ -813,61 +818,61 @@ public final class MainActivity extends Activity {
             LinearLayout row = new LinearLayout(this);
             row.setOrientation(LinearLayout.HORIZONTAL);
             row.setGravity(Gravity.CENTER_VERTICAL);
-            row.setPadding(px(5), 0, px(4), 0);
+            row.setPadding(px(7), 0, px(6), 0);
             row.setBackground(roundedPx(Color.argb(10, 255, 255, 255), 5, 1, Color.rgb(39, 78, 61)));
 
-            TextView rankBadge = textPx(String.valueOf(rank + 1), 6, Color.rgb(9, 45, 31), true);
+            TextView rankBadge = textPx(String.valueOf(rank + 1), 8, Color.rgb(9, 45, 31), true);
             rankBadge.setGravity(Gravity.CENTER);
             rankBadge.setBackground(roundedPx(LIME, 6, 0, Color.TRANSPARENT));
-            row.addView(rankBadge, new LinearLayout.LayoutParams(px(15), px(15)));
+            row.addView(rankBadge, new LinearLayout.LayoutParams(px(19), px(19)));
 
             LinearLayout meta = new LinearLayout(this);
             meta.setOrientation(LinearLayout.VERTICAL);
             meta.setGravity(Gravity.CENTER_VERTICAL);
-            meta.addView(textPx("第 " + (rank + 1) + " 名", 6, TEXT, true), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(12)));
-            meta.addView(textPx("+" + points + " 分", 5, LIME, false), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(11)));
-            LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(px(138), ViewGroup.LayoutParams.MATCH_PARENT);
-            metaParams.leftMargin = px(4);
+            meta.addView(textPx("第 " + (rank + 1) + " 名", 8, TEXT, true), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(15)));
+            meta.addView(textPx("+" + points + " 分", 6, LIME, false), new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(13)));
+            LinearLayout.LayoutParams metaParams = new LinearLayout.LayoutParams(px(160), ViewGroup.LayoutParams.MATCH_PARENT);
+            metaParams.leftMargin = px(6);
             row.addView(meta, metaParams);
 
-            Button rankButton = controlChoice(name.isEmpty() ? "选择牌手" : name, !name.isEmpty(), 6);
+            Button rankButton = controlChoice(name.isEmpty() ? "选择牌手" : name, !name.isEmpty(), 8);
             trackControlFocus(rankButton, "rank-" + (rank + 1));
             rankButton.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-            rankButton.setPadding(px(6), 0, px(6), 0);
+            rankButton.setPadding(px(9), 0, px(9), 0);
             final int rankIndex = rank;
             rankButton.setOnClickListener(view -> showRankPicker(rankIndex));
-            row.addView(rankButton, new LinearLayout.LayoutParams(0, px(26), 1));
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(43));
-            params.bottomMargin = px(6);
+            row.addView(rankButton, new LinearLayout.LayoutParams(0, px(36), 1));
+            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(55));
+            params.bottomMargin = px(8);
             block.addView(row, params);
         }
 
-        Button settle = controlChoice("确认结算名次积分  →", true, 7);
+        Button settle = controlChoice("确认结算名次积分  →", true, 9);
         trackControlFocus(settle, "settle");
         settle.setEnabled(canSettleRanks());
         settle.setOnClickListener(view -> confirmSettlement());
-        LinearLayout.LayoutParams settleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(32));
+        LinearLayout.LayoutParams settleParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, px(39));
         block.addView(settle, settleParams);
         return block;
     }
 
     private View actionControls() {
         GridLayout grid = grid(2);
-        grid.setPadding(0, px(7), 0, 0);
-        Button knockout = controlChoice("✦   淘汰加分\n      基础 +" + Rulebook.knockoutShare(state.playerCount, 1) + " 分", false, 7);
+        grid.setPadding(0, px(9), 0, 0);
+        Button knockout = controlChoice("✦   淘汰加分\n      基础 +" + Rulebook.knockoutShare(state.playerCount, 1) + " 分", false, 9);
         trackControlFocus(knockout, "knockout");
         knockout.setEnabled(!state.players.isEmpty());
         knockout.setOnClickListener(view -> showKnockoutPicker());
         knockout.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        grid.addView(knockout, controlGridCell(44, 0, 4, 0, 0));
+        grid.addView(knockout, controlGridCell(54, 0, 5, 0, 0));
 
         int cost = Rulebook.reviveCost(state.playerCount, state.currentLevel);
-        Button revive = controlChoice(cost > 0 ? "↻   复活扣分\n      单次 −" + cost + " 分" : "↻   当前等级不可复活", false, 7);
+        Button revive = controlChoice(cost > 0 ? "↻   复活扣分\n      单次 −" + cost + " 分" : "↻   当前等级不可复活", false, 9);
         trackControlFocus(revive, "revive");
         revive.setEnabled(cost > 0 && !state.players.isEmpty());
         revive.setOnClickListener(view -> showRevivePicker());
         revive.setGravity(Gravity.CENTER_VERTICAL | Gravity.START);
-        grid.addView(revive, controlGridCell(44, 4, 0, 0, 0));
+        grid.addView(revive, controlGridCell(54, 5, 0, 0, 0));
         return grid;
     }
 
