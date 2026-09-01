@@ -80,8 +80,7 @@
 }
 
 .sectionHead { min-height: 42px; margin-bottom: 1.5vh; display: flex; align-items: center; justify-content: space-between; }
-.sectionHead > div { display: flex; align-items: center; gap: 12px; }
-.sectionHead span { width: 28px; height: 28px; display: grid; place-items: center; border: 1px solid rgb(200 241 90 / 38%); border-radius: 50%; color: var(--lime); font-size: 10px; }
+.sectionHead > div { display: flex; align-items: center; }
 .sectionHead h1 { margin: 0; font-family: "Noto Serif SC", serif; font-size: 32px; font-size: clamp(23px, 1.65vw, 32px); }
 .sectionHead > small { color: var(--muted); font-size: 13px; }
 

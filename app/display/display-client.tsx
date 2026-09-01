@@ -111,7 +111,7 @@ export default function DisplayClient({ initialState }: { initialState: DisplayS
 
     <section className={styles.dashboard}>
       <aside className={styles.ranking}>
-        <div className={styles.sectionHead}><div><span>01</span><h1>实时积分排名</h1></div><small>{sortedPlayers.length} 位牌手</small></div>
+        <div className={styles.sectionHead}><div><h1>实时积分排名</h1></div><small>{sortedPlayers.length} 位牌手</small></div>
         {!state && <div className={styles.empty}><span>◌</span><strong>{connectionFailed ? "牌桌数据连接失败" : "正在连接牌桌"}</strong><small>{connectionFailed ? "正在自动重试，请检查电脑端服务" : "获取最新积分与盲注信息"}</small></div>}
         {state && sortedPlayers.length === 0 && <div className={styles.empty}><span>♠</span><strong>牌桌正在等待玩家</strong><small>请在手机控制台中添加人员</small></div>}
         <div className={styles.playerList}>{sortedPlayers.map((player, index) => <article className={index < 3 ? styles.leader : ""} key={player.name}>
