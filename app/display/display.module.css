@@ -200,7 +200,7 @@
 .controlPanel {
   position: relative;
   z-index: 1;
-  width: 60vw;
+  width: 68vw;
   height: 100vh;
   display: flex;
   flex-direction: column;
@@ -210,7 +210,7 @@
   box-shadow: -20px 0 52px rgb(0 0 0 / 26%);
   animation: panelIn .2s ease-out;
 }
-.panelOpen { width: 40vw; padding-inline: 20px; overflow: hidden; }
+.panelOpen { width: 32vw; padding-inline: 20px; overflow: hidden; }
 .panelOpen .header { grid-template-columns: 1fr auto; }
 .panelOpen .brand small { display: none; }
 .panelOpen .headerControls { gap: 6px; }
@@ -240,24 +240,29 @@
 .panelOpen .nextRevive { margin-top: 7px; font-size: 10px; transform: translateY(8px); }
 .controlHead {
   position: relative;
-  min-height: 82px;
-  padding: 0 26px;
+  min-height: 104px;
+  padding: 0 34px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
+  gap: 24px;
 }
-.controlHead::after { content: ""; position: absolute; right: 26px; bottom: 0; left: 26px; height: 1px; background: rgb(172 222 193 / 15%); }
-.controlHead h2 { margin: 0; font-family: "Noto Sans SC", sans-serif; font-size: 15px; letter-spacing: .08em; }
-.controlBody { min-height: 0; padding: 22px 26px 38px; overflow-y: auto; scrollbar-color: rgb(200 241 90 / 38%) transparent; }
-.controlNotice { margin-bottom: 14px; padding: 11px 14px; border: 1px solid rgb(200 241 90 / 24%); border-radius: 10px; color: #d7e9de; background: rgb(200 241 90 / 8%); font-size: 12px; }
-.controlSection { padding: 19px 0 22px; border-bottom: 1px solid rgb(172 222 193 / 13%); }
+.controlHead::after { content: ""; position: absolute; right: 34px; bottom: 0; left: 34px; height: 1px; background: rgb(172 222 193 / 15%); }
+.controlHead > div { display: flex; flex-direction: column; gap: 5px; }
+.controlHead > div > small { color: rgb(200 241 90 / 68%); font-size: 10px; font-weight: 800; letter-spacing: .18em; }
+.controlHead h2 { margin: 0; font-family: "Noto Sans SC", sans-serif; font-size: 24px; line-height: 1.2; letter-spacing: .06em; }
+.controlClose { min-width: 104px; min-height: 48px; padding: 0 9px 0 17px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid rgb(172 222 193 / 22%); border-radius: 999px; color: #dcebe3; background: rgb(255 255 255 / 5%); font-size: 13px; font-weight: 700; cursor: pointer; }
+.controlClose i { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; color: #10291f; background: var(--lime); font-size: 22px; font-style: normal; font-weight: 400; line-height: 1; }
+.controlClose:hover { border-color: rgb(200 241 90 / 55%); background: rgb(255 255 255 / 9%); }
+.controlBody { min-height: 0; padding: 28px 34px 52px; overflow-y: auto; scrollbar-color: rgb(200 241 90 / 38%) transparent; }
+.controlNotice { margin-bottom: 18px; padding: 14px 17px; border: 1px solid rgb(200 241 90 / 24%); border-radius: 12px; color: #e3f0e9; background: rgb(200 241 90 / 8%); font-size: 14px; line-height: 1.55; }
+.controlSection { padding: 26px 0 30px; border-bottom: 1px solid rgb(172 222 193 / 13%); }
 .controlSection:first-of-type { padding-top: 0; }
 .controlSection:last-child { border-bottom: 0; }
-.controlSectionTitle { margin-bottom: 13px; display: flex; align-items: baseline; justify-content: space-between; gap: 18px; }
-.controlSectionTitle strong { font-size: 16px; }
-.controlSectionTitle small { color: var(--muted); font-size: 10px; text-align: right; }
-.compactPicker { display: grid; grid-template-columns: repeat(10, 1fr); gap: 7px; }
+.controlSectionTitle { margin-bottom: 17px; display: flex; align-items: baseline; justify-content: space-between; gap: 20px; }
+.controlSectionTitle strong { font-size: 19px; line-height: 1.3; }
+.controlSectionTitle small { color: #9eb9ab; font-size: 12px; line-height: 1.5; text-align: right; }
+.compactPicker { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; }
 .compactPicker button, .compactLevels button {
   min-width: 0;
   border: 1px solid rgb(172 222 193 / 16%);
@@ -267,14 +272,14 @@
   cursor: pointer;
   transition: border-color .16s ease, background .16s ease, box-shadow .16s ease;
 }
-.compactPicker button { height: 48px; display: flex; align-items: center; justify-content: center; gap: 2px; }
-.compactPicker b { color: #eaf4ee; font: 21px/1 "Noto Serif SC", serif; }
-.compactPicker small { font-size: 9px; line-height: 1; transform: translateY(4px); }
-.compactLevels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; }
-.compactLevels button { min-height: 58px; padding: 7px 10px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-content: center; align-items: center; text-align: left; }
-.compactLevels b { color: #f1f7f3; font: 19px "Noto Serif SC", serif; }
-.compactLevels span { color: var(--muted); font-size: 10px; }
-.levelReviveCost { grid-column: 2; grid-row: 1 / 3; justify-self: end; padding-left: 8px; color: #dceae2; font-size: 11px; font-style: normal; font-weight: 500; white-space: nowrap; }
+.compactPicker button { height: 62px; display: flex; align-items: center; justify-content: center; gap: 4px; }
+.compactPicker b { color: #eaf4ee; font: 27px/1 "Noto Serif SC", serif; }
+.compactPicker small { font-size: 12px; line-height: 1; transform: translateY(5px); }
+.compactLevels { display: grid; grid-template-columns: repeat(5, 1fr); gap: 11px; }
+.compactLevels button { min-height: 74px; padding: 10px 13px; display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-rows: auto auto; align-content: center; align-items: center; row-gap: 3px; text-align: left; }
+.compactLevels b { color: #f1f7f3; font: 23px "Noto Serif SC", serif; }
+.compactLevels span { color: #98b2a5; font-size: 12px; }
+.levelReviveCost { grid-column: 2; grid-row: 1 / 3; justify-self: end; padding-left: 10px; color: #dceae2; font-size: 13px; font-style: normal; font-weight: 600; white-space: nowrap; }
 .controlSelected .levelReviveCost { color: var(--lime); }
 .compactPicker button:hover:not(:disabled):not(.controlSelected),
 .compactLevels button:hover:not(:disabled):not(.controlSelected) {
@@ -297,55 +302,55 @@
 }
 .controlSelected:focus-visible { outline: 2px solid var(--lime); outline-offset: 3px; }
 .controlSelected b { color: var(--lime) !important; }
-.controlRanks { display: grid; grid-template-columns: 1fr; gap: 9px; }
-.controlRankRow { min-width: 0; min-height: 66px; padding: 9px 10px; display: grid; grid-template-columns: minmax(180px, .42fr) 1fr; align-items: center; gap: 14px; border: 1px solid rgb(172 222 193 / 14%); border-radius: 10px; background: rgb(255 255 255 / 3%); }
-.controlRankRow > span { min-width: 0; display: grid; grid-template-columns: 30px 1fr; align-items: center; }
-.controlRankRow > span i { width: 27px; height: 27px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 50%; color: #173023; background: var(--lime); font-size: 11px; font-style: normal; font-weight: 800; }
-.controlRankRow > span b { font-size: 12px; }
-.controlRankRow > span small { color: var(--lime); font-size: 9px; }
+.controlRanks { display: grid; grid-template-columns: 1fr; gap: 12px; }
+.controlRankRow { min-width: 0; min-height: 84px; padding: 12px 14px; display: grid; grid-template-columns: minmax(210px, .4fr) 1fr; align-items: center; gap: 18px; border: 1px solid rgb(172 222 193 / 16%); border-radius: 13px; background: rgb(255 255 255 / 4%); }
+.controlRankRow > span { min-width: 0; display: grid; grid-template-columns: 38px 1fr; align-items: center; column-gap: 3px; }
+.controlRankRow > span i { width: 34px; height: 34px; grid-row: 1 / 3; display: grid; place-items: center; border-radius: 50%; color: #173023; background: var(--lime); font-size: 13px; font-style: normal; font-weight: 800; }
+.controlRankRow > span b { font-size: 15px; }
+.controlRankRow > span small { margin-top: 3px; color: var(--lime); font-size: 11px; }
 .rankPlayerSelect { position: relative; min-width: 0; }
-.rankSelectTrigger { width: 100%; height: 44px; padding: 0 12px; display: flex; align-items: center; justify-content: space-between; gap: 8px; border: 1px solid rgb(172 222 193 / 22%); border-radius: 8px; color: #e7f1eb; background: #0c2b21; text-align: left; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
+.rankSelectTrigger { width: 100%; height: 56px; padding: 0 15px; display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid rgb(172 222 193 / 24%); border-radius: 10px; color: #edf6f1; background: #0c2b21; text-align: left; cursor: pointer; transition: border-color .16s ease, box-shadow .16s ease, background .16s ease; }
 .rankSelectTrigger:hover:not(:disabled) { border-color: rgb(200 241 90 / 48%); background: #103629; }
 .rankSelectTrigger:focus-visible, .rankSelectTriggerOpen { outline: 0; border-color: var(--lime); box-shadow: 0 0 0 3px rgb(200 241 90 / 10%); }
 .rankSelectTrigger:disabled { opacity: .44; cursor: not-allowed; }
-.rankSelectTrigger > span { min-width: 0; display: flex; align-items: center; gap: 9px; }
-.rankSelectTrigger > span > b { overflow: hidden; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
-.rankSelectTrigger i, .rankSelectMenu > button > i { width: 27px; height: 27px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #0b6242; background: #def2e7; font-size: 8px; font-style: normal; font-weight: 800; }
-.rankSelectTrigger > em { color: #a5bbb0; font-size: 16px; font-style: normal; line-height: 1; transition: transform .16s ease; }
+.rankSelectTrigger > span { min-width: 0; display: flex; align-items: center; gap: 11px; }
+.rankSelectTrigger > span > b { overflow: hidden; font-size: 14px; text-overflow: ellipsis; white-space: nowrap; }
+.rankSelectTrigger i, .rankSelectMenu > button > i { width: 32px; height: 32px; display: grid; place-items: center; flex: 0 0 auto; border-radius: 50%; color: #0b6242; background: #def2e7; font-size: 10px; font-style: normal; font-weight: 800; }
+.rankSelectTrigger > em { color: #b6c9bf; font-size: 20px; font-style: normal; line-height: 1; transition: transform .16s ease; }
 .rankSelectTriggerOpen > em { transform: rotate(180deg); }
 .rankSelectTriggerFilled { border-color: rgb(200 241 90 / 40%); background: #10372a; }
-.rankSelectMenu { position: absolute; z-index: 60; top: calc(100% + 6px); left: 0; right: 0; min-width: 260px; max-height: 250px; padding: 6px; overflow: auto; border: 1px solid #b9cac0; border-radius: 10px; background: #f8fcf9; box-shadow: 0 20px 44px rgb(0 12 7 / 42%); }
-.rankSelectMenu > button { width: 100%; min-height: 48px; padding: 7px 9px; display: grid; grid-template-columns: 29px minmax(0, 1fr) 20px; align-items: center; gap: 9px; border: 0; border-bottom: 1px solid #e4eee8; border-radius: 6px; color: #183126; background: transparent; text-align: left; cursor: pointer; }
+.rankSelectMenu { position: absolute; z-index: 60; top: calc(100% + 8px); left: 0; right: 0; min-width: 300px; max-height: 320px; padding: 8px; overflow: auto; border: 1px solid #b9cac0; border-radius: 12px; background: #f8fcf9; box-shadow: 0 20px 44px rgb(0 12 7 / 42%); }
+.rankSelectMenu > button { width: 100%; min-height: 58px; padding: 9px 11px; display: grid; grid-template-columns: 34px minmax(0, 1fr) 22px; align-items: center; gap: 11px; border: 0; border-bottom: 1px solid #e4eee8; border-radius: 7px; color: #183126; background: transparent; text-align: left; cursor: pointer; }
 .rankSelectMenu > button:last-child { border-bottom: 0; }
 .rankSelectMenu > button:hover:not(:disabled) { background: #e8f4ed; }
 .rankSelectMenu > button:focus-visible { outline: 2px solid #0b6242; outline-offset: -2px; }
 .rankSelectMenu > button:disabled { opacity: .4; cursor: not-allowed; }
 .rankSelectMenu > button > span > * { display: block; }
-.rankSelectMenu > button strong { font-size: 11px; }
-.rankSelectMenu > button small { margin-top: 3px; color: #75857c; font-size: 8px; }
-.rankSelectMenu > button > b { color: #0b6242; font-size: 13px; }
+.rankSelectMenu > button strong { font-size: 14px; }
+.rankSelectMenu > button small { margin-top: 3px; color: #687a70; font-size: 11px; }
+.rankSelectMenu > button > b { color: #0b6242; font-size: 16px; }
 .rankSelectMenu .rankOptionSelected { color: #0b6242; background: #e4f3eb; }
 .rankSelectMenu .rankClearOption { min-height: 38px; grid-template-columns: 1fr 20px; color: #944f47; }
 .rankSelectMenu .rankClearOption small { font-size: 15px; text-align: center; }
 .actionEditor .rankPlayerSelect { width: 100%; }
-.settleButton, .actionConfirm { width: 100%; min-height: 48px; margin-top: 12px; border: 0; border-radius: 10px; color: #10291f; background: var(--lime); font-weight: 800; cursor: pointer; }
+.settleButton, .actionConfirm { width: 100%; min-height: 58px; margin-top: 15px; border: 0; border-radius: 12px; color: #10291f; background: var(--lime); font-size: 14px; font-weight: 800; cursor: pointer; }
 .settleButton span { margin-left: 6px; }
 .settleButton:hover, .settleButton:focus-visible, .actionConfirm:hover, .actionConfirm:focus-visible { outline: 2px solid rgb(200 241 90 / 35%); outline-offset: 3px; filter: brightness(1.05); }
 .settleButton:disabled, .actionConfirm:disabled { opacity: .42; cursor: default; }
-.controlActions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.controlActions > button { min-height: 68px; padding: 11px 14px; display: grid; grid-template-columns: 38px 1fr; align-items: center; gap: 10px; border: 1px solid rgb(172 222 193 / 16%); border-radius: 11px; color: #eaf4ee; background: rgb(255 255 255 / 4%); text-align: left; cursor: pointer; }
-.controlActions > button > i { width: 34px; height: 34px; display: grid; place-items: center; border-radius: 50%; color: var(--lime); background: rgb(200 241 90 / 9%); font-size: 19px; font-style: normal; }
+.controlActions { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.controlActions > button { min-height: 84px; padding: 14px 17px; display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: 13px; border: 1px solid rgb(172 222 193 / 18%); border-radius: 13px; color: #eaf4ee; background: rgb(255 255 255 / 4%); text-align: left; cursor: pointer; }
+.controlActions > button > i { width: 42px; height: 42px; display: grid; place-items: center; border-radius: 50%; color: var(--lime); background: rgb(200 241 90 / 9%); font-size: 23px; font-style: normal; }
 .controlActions > button > span { display: flex; flex-direction: column; }
-.controlActions > button b { font-size: 13px; }
-.controlActions > button small { margin-top: 2px; color: var(--muted); font-size: 10px; }
+.controlActions > button b { font-size: 16px; }
+.controlActions > button small { margin-top: 4px; color: #9eb9ab; font-size: 12px; }
 .controlActions > button:hover, .controlActions > button:focus-visible { outline: none; border-color: rgb(200 241 90 / 50%); }
 .controlActions > button:disabled { opacity: .4; cursor: default; }
-.actionEditor { margin-top: 10px; padding: 14px; border: 1px solid rgb(200 241 90 / 17%); border-radius: 11px; background: rgb(200 241 90 / 5%); }
-.actionEditor p { margin: 0 0 12px; color: #b8ccc1; font-size: 11px; line-height: 1.65; }
-.playerChips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
-.playerChips button { min-width: 0; min-height: 43px; padding: 6px 9px; display: flex; align-items: center; justify-content: space-between; gap: 8px; overflow: hidden; border: 1px solid rgb(172 222 193 / 16%); border-radius: 8px; color: #eaf4ee; background: rgb(255 255 255 / 4%); cursor: pointer; }
+.actionEditor { margin-top: 13px; padding: 18px; border: 1px solid rgb(200 241 90 / 18%); border-radius: 13px; background: rgb(200 241 90 / 5%); }
+.actionEditor p { margin: 0 0 15px; color: #c7d9cf; font-size: 13px; line-height: 1.7; }
+.playerChips { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.playerChips button { min-width: 0; min-height: 54px; padding: 8px 12px; display: flex; align-items: center; justify-content: space-between; gap: 10px; overflow: hidden; border: 1px solid rgb(172 222 193 / 18%); border-radius: 10px; color: #eaf4ee; background: rgb(255 255 255 / 4%); font-size: 13px; cursor: pointer; }
 .playerChips span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.playerChips small { color: var(--muted); font-size: 9px; }
+.playerChips small { color: #9eb9ab; font-size: 11px; }
 .controlPanel button:focus-visible,
 .controlPanel select:focus-visible {
   position: relative;
@@ -400,6 +405,7 @@
   .ranking { padding: 18px; }
   .playerList { grid-template-columns: 1fr 1fr; }
   .gameState { min-height: 680px; }
+  .controlPanel { width: min(100vw, 760px); }
   .panelOpen { width: 100%; padding-inline: 18px; }
   .panelOpen .dashboard { height: auto; grid-template-columns: 1fr; }
   .panelOpen .gameState { height: auto; }
@@ -432,14 +438,19 @@
   .reviveCard > section > strong { flex-direction: column; gap: 5px; font-size: 34px; }
   .controlPanel { width: 100vw; }
   .controlHead { min-height: 96px; padding: 17px 16px; }
+  .controlHead::after { right: 16px; left: 16px; }
+  .controlHead > div > small { font-size: 9px; }
   .controlHead h2 { font-size: 24px; }
+  .controlClose { min-width: 48px; width: 48px; padding: 0; justify-content: center; }
+  .controlClose span { display: none; }
   .controlBody { padding: 17px 14px 30px; }
+  .controlSection { padding: 23px 0 27px; }
   .controlSectionTitle { align-items: flex-start; flex-direction: column; gap: 3px; }
   .controlSectionTitle small { text-align: left; }
   .compactPicker { grid-template-columns: repeat(5, 1fr); }
   .compactLevels { grid-template-columns: repeat(2, 1fr); }
   .controlRanks { grid-template-columns: 1fr; }
-  .controlRankRow { grid-template-columns: minmax(130px, .8fr) 1fr; }
+  .controlRankRow { grid-template-columns: 1fr; gap: 11px; }
   .controlActions { grid-template-columns: 1fr; }
   .playerChips { grid-template-columns: 1fr 1fr; }
 }
