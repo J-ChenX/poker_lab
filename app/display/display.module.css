@@ -3,6 +3,7 @@
   --muted: #91a79b;
   --green: #22b573;
   --lime: #c8f15a;
+  --split-panel-gutter: 20px;
   min-width: 320px;
   min-height: 100vh;
   width: 100%;
@@ -210,7 +211,7 @@
   box-shadow: -20px 0 52px rgb(0 0 0 / 26%);
   animation: panelIn .2s ease-out;
 }
-.panelOpen { width: 32vw; padding-inline: 20px; overflow: hidden; }
+.panelOpen { width: 32vw; padding-inline: var(--split-panel-gutter); overflow: hidden; }
 .panelOpen .header { grid-template-columns: 1fr auto; }
 .panelOpen .brand small { display: none; }
 .panelOpen .headerControls { gap: 6px; }
@@ -241,15 +242,15 @@
 .controlHead {
   position: relative;
   min-height: 82px;
-  padding: 0 34px;
+  padding: 0 var(--split-panel-gutter);
   display: flex;
   align-items: center;
 }
-.controlHead::after { content: ""; position: absolute; right: 34px; bottom: 0; left: 34px; height: 1px; background: rgb(172 222 193 / 15%); }
+.controlHead::after { content: ""; position: absolute; right: var(--split-panel-gutter); bottom: 0; left: var(--split-panel-gutter); height: 1px; background: rgb(172 222 193 / 15%); }
 .controlHead > div { display: flex; flex-direction: column; gap: 2px; }
 .controlHead > div > small { color: rgb(200 241 90 / 68%); font-size: 8px; font-weight: 800; letter-spacing: .17em; }
 .controlHead h2 { margin: 0; font-family: "Noto Sans SC", sans-serif; font-size: 15px; line-height: 1.2; letter-spacing: .08em; }
-.controlBody { min-height: 0; padding: 28px 34px 52px; overflow-y: auto; scrollbar-color: rgb(200 241 90 / 38%) transparent; }
+.controlBody { min-height: 0; padding: 28px var(--split-panel-gutter) 52px; overflow-y: auto; scrollbar-color: rgb(200 241 90 / 38%) transparent; }
 .controlNotice { margin-bottom: 18px; padding: 14px 17px; border: 1px solid rgb(200 241 90 / 24%); border-radius: 12px; color: #e3f0e9; background: rgb(200 241 90 / 8%); font-size: 14px; line-height: 1.55; }
 .controlSection { padding: 26px 0 30px; border-bottom: 1px solid rgb(172 222 193 / 13%); }
 .controlSection:first-of-type { padding-top: 0; }
@@ -407,7 +408,7 @@
 }
 
 @media (max-width: 560px) {
-  .screen { padding: 0 10px 24px; }
+  .screen { --split-panel-gutter: 16px; padding: 0 10px 24px; }
   .header { min-height: 64px; }
   .brand small { display: none; }
   .headerControls { gap: 5px; }
@@ -432,9 +433,8 @@
   .reviveCard > section { padding-left: var(--state-gutter); border-left: 0; }
   .reviveCard > section > strong { flex-direction: column; gap: 5px; font-size: 34px; }
   .controlPanel { width: 100vw; }
-  .controlHead { min-height: 82px; padding: 0 16px; }
-  .controlHead::after { right: 16px; left: 16px; }
-  .controlBody { padding: 17px 14px 30px; }
+  .controlHead { min-height: 82px; }
+  .controlBody { padding-top: 17px; padding-bottom: 30px; }
   .controlSection { padding: 23px 0 27px; }
   .controlSectionTitle { align-items: flex-start; flex-direction: column; gap: 3px; }
   .controlSectionTitle small { text-align: left; }
