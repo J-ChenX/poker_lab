@@ -313,7 +313,6 @@ export default function DisplayControlPanel({ state, busy, onClose, onMutate }: 
     <aside ref={panelRef} className={styles.controlPanel} role="dialog" aria-modal="true" aria-labelledby="display-control-title">
       <header className={styles.controlHead}>
         <div><small>TABLE CONTROLS</small><h2 id="display-control-title">牌桌控制</h2></div>
-        <button data-tv-key="close-panel" className={styles.controlClose} type="button" aria-label="关闭牌桌控制" onClick={onClose}><span>关闭</span><i aria-hidden="true">×</i></button>
       </header>
 
       <div className={styles.controlBody}>
