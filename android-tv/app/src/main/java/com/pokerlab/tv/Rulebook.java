@@ -3,7 +3,8 @@ package com.pokerlab.tv;
 final class Rulebook {
     static final int[] SMALL_BLINDS = {5, 10, 20, 30, 50, 70, 100, 150, 200, 300};
     static final int[] BIG_BLINDS = {10, 20, 40, 60, 100, 140, 200, 300, 400, 600};
-    static final int[] REVIVE_CHIPS = {2000, 3000, 4500, 5000, 6000, 6500, 7000, 0, 0, 0};
+    // Initial stack plus 500 per level, capped at two initial stacks.
+    static final int[] REVIVE_CHIPS = {2000, 2500, 3000, 3500, 4000, 4000, 4000, 0, 0, 0};
 
     private Rulebook() {}
 
@@ -31,11 +32,17 @@ final class Rulebook {
 
     static int reviveCost(int playerCount, int level) {
         if (playerCount < 5 || playerCount > 12 || level < 1 || level > 7) return 0;
-        int[] row;
-        if (playerCount <= 6) row = new int[]{11, 14, 18, 19, 21, 22, 23};
-        else if (playerCount <= 8) row = new int[]{12, 16, 20, 22, 24, 26, 27};
-        else if (playerCount <= 10) row = new int[]{14, 18, 23, 25, 28, 30, 31};
-        else row = new int[]{15, 19, 25, 27, 31, 32, 34};
-        return row[level - 1];
+        int pairStart = playerCount % 2 == 0 ? playerCount - 1 : playerCount;
+        int chips = REVIVE_CHIPS[level - 1];
+        return Math.max(reviveCostFor(pairStart, chips), reviveCostFor(pairStart + 1, chips));
+    }
+
+    private static int reviveCostFor(int playerCount, int chips) {
+        int prizePool = 0;
+        for (int rank = 1; rank <= scoringPlaceCount(playerCount); rank++) {
+            prizePool += placementScore(playerCount, rank);
+        }
+        return (int) Math.ceil(prizePool * (double) chips / (2000 * playerCount + chips))
+            + knockoutShare(playerCount, 1);
     }
 }
