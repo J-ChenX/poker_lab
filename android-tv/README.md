@@ -1,7 +1,7 @@
 # Poker Lab Android TV
 
 Android TV 遥控器应用。启动后按电视真实输出分辨率等比显示与
-`https://tv.example.com/display` 目标图对齐的原生看板。布局以 1920 × 1080 为比例基准，可自动适配 4K 输出，并额外采用 1.5 倍电视可读性字号；不再依赖旧电视 WebView 对现代 CSS/React 的支持。
+所配置服务器的 `/display` 目标图对齐的原生看板。布局以 1920 × 1080 为比例基准，可自动适配 4K 输出，并额外采用 1.5 倍电视可读性字号；不再依赖旧电视 WebView 对现代 CSS/React 的支持。
 
 ## 功能
 
@@ -20,11 +20,23 @@ Android TV 遥控器应用。启动后按电视真实输出分辨率等比显示
 
 APK 支持 Android 5.0（API 21）及以上系统。构建需要 JDK 17、Android SDK 36 和 Android Gradle Plugin 9.2。
 
+先在项目根目录复制 `.env.example` 为 `.env.local`，填写自己的 `POKER_SERVER_URL`，例如 `https://poker.example.com`（替换为实际 cpolar 根地址，不含 `/display`）。在根目录执行：
+
+```powershell
+Copy-Item .env.example .env.local
+```
+
+如果 `.env.local` 已存在，直接编辑它。构建按系统环境变量、根目录 `.env.local`、根目录 `.env` 的顺序取值。使用单行字面 URL，可带单引号或双引号、行尾 `#` 注释，不支持变量展开；Android 不读取 Vite 的 `.env.development`、`.env.production` 等模式文件。未设置时使用 `https://example.com` 占位地址，需要在电视的服务器设置中填写可用地址。
+
+然后进入 `android-tv` 目录构建：
+
 ```powershell
 ./gradlew.bat assembleRelease
 ```
 
 安装包生成在 `app/build/outputs/apk/release/app-release.apk`。
+
+环境配置在构建时写入 `BuildConfig.DEFAULT_SERVER_URL`，修改后需重新构建 APK。电视已保存的服务器地址优先于 APK 默认值，可在电视的服务器设置中修改；Debug 包仍使用模拟器宿主机地址。域名可从 APK 中提取，因此此变量只配置地址，勿填账号、密码或令牌。`.env.local` 被 Git 忽略，提交配置时只提交 `.env.example`。
 
 ## 电视安装
 

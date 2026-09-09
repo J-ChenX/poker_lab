@@ -43,7 +43,7 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 @media(max-width:520px){.topbar{padding:0 20px}.tagline{display:none}.workspace{margin-left:10px;margin-right:10px}.card-panel,.result-panel{padding:23px}.cards-row{gap:9px}.picker-backdrop{padding:0}.picker{height:100vh;max-height:none}.deck-grid{padding:14px}.picker-head,.picker-foot{padding-left:18px;padding-right:18px}}
 @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
 
-/* Exact enumeration edition */
+/* 精确枚举模式的界面样式。 */
 .calculate { position:relative; overflow:hidden; }
 .calculate-progress { position:absolute; left:0; bottom:0; height:3px; background:var(--lime); transition:width .15s linear; }
 .calculation-hint { grid-column:1/-1; margin:-14px 0 0; color:#8b8f89; font-size:9px; }
@@ -126,7 +126,7 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 @media(max-width:1050px){.live-distribution-intro{padding:38px 0}.live-probability-list{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}.live-note{grid-column:1/-1}}
 @media(max-width:520px){.live-probability-list{grid-template-columns:1fr}.live-distribution-intro{padding-left:10px;padding-right:10px}}
 
-/* Turnaround analysis — visually continues the light catalogue section. */
+/* 逆转分析区域：沿用浅色牌型目录区域的视觉样式。 */
 .turnaround-section { margin:-55px 5vw 85px; border-bottom:1px solid var(--line); padding:32px 0 0; }
 .turnaround-head { display:grid; grid-template-columns:minmax(0,1fr) 220px; align-items:end; gap:34px; padding-bottom:28px; }
 .turnaround-head .eyebrow { margin-bottom:12px; }
@@ -180,7 +180,7 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 @media(max-width:760px){.turnaround-section{margin:-55px 20px 70px}.turnaround-head{grid-template-columns:1fr;gap:18px}.turnaround-action{min-height:0}.turnaround-decision{align-items:flex-start;flex-direction:column;gap:2px}}
 @media(max-width:520px){.turnaround-section{margin-left:12px;margin-right:12px;padding-left:10px;padding-right:10px}.turnaround-head h2{font-size:25px}.out-card-list>span{min-width:32px;height:37px}}
 
-/* Mobile interaction pass: compact cards, thumb-friendly controls, and a no-scroll deck picker. */
+/* 移动端交互：紧凑牌面、便于拇指操作的控件，以及无需滚动的选牌面板。 */
 @media(max-width:640px){
   html { scroll-padding-top:72px; }
   body { min-width:320px; overflow-x:hidden; -webkit-text-size-adjust:100%; }

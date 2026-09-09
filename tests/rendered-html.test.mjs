@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
+import { loadEnv } from "vite";
 
 const workerUrl = new URL("../dist/server/index.js", import.meta.url);
 workerUrl.searchParams.set("test", `${process.pid}-${Date.now()}`);
@@ -46,6 +47,16 @@ test("计算器保留在 /calculate", async () => {
   const html = await response.text();
   assert.match(html, /POKER LAB/);
   assert.match(html, /你的底牌/);
+});
+
+test("分享图片使用环境配置中的站点根地址", async () => {
+  const { POKER_SITE_URL } = loadEnv("production", fileURLToPath(new URL("../", import.meta.url)), "POKER_");
+  const origin = new URL(POKER_SITE_URL?.trim() || "http://localhost:3000").origin;
+  const html = await (await render("/calculate")).text();
+  const openGraphImage = html.match(/<meta\s+property="og:image"\s+content="([^"]+)"/);
+  const twitterImage = html.match(/<meta\s+name="twitter:image"\s+content="([^"]+)"/);
+  assert.equal(openGraphImage?.[1], `${origin}/og.png`);
+  assert.equal(twitterImage?.[1], `${origin}/og.png`);
 });
 
 test("电视看板可通过 /display 打开", async () => {

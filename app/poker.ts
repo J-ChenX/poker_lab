@@ -96,8 +96,8 @@ function straightHigh(values: number[]) {
   return 0;
 }
 
-// Direct 5–7 card evaluator. It derives the best category without generating
-// every five-card subset, which keeps full flop enumeration practical.
+// 直接评估 5–7 张牌的最佳牌型，无需生成所有五张牌子集，
+// 从而将翻牌阶段完整枚举的计算量控制在可接受范围内。
 export function evaluate(cards: string[]): Score {
   const counts = Array(15).fill(0) as number[];
   const suitValues: Record<string, number[]> = { s: [], h: [], d: [], c: [] };
@@ -248,10 +248,10 @@ function haltonValue(sample: number, dimension: number, shifts: number[]) {
 }
 
 /**
- * Fast first-pass model using a shifted Halton low-discrepancy sequence. Every
- * sample deals the future board and every opponent from one shared deck, so it
- * keeps card removal and opponent dependence instead of raising heads-up odds
- * to a power. The larger pseudo-random simulation below still replaces it.
+ * 使用经过平移的 Halton 低差异序列，快速给出初步估计。
+ * 每个样本从同一副牌中发出后续公共牌及所有对手的手牌，保留已知牌移除效应
+ * 和对手之间的相关性，避免用单挑胜率的幂近似多人胜率。
+ * 下方更大规模的伪随机模拟完成后，会替换这一初步结果。
  */
 export function estimateMultiway(
   hero: string[],
@@ -420,7 +420,7 @@ function fixedBoardMultiwayWinRate(hero: string[], board: string[], opponents: n
   return wins / samples * 100;
 }
 
-/** Fast deterministic conditional model shown before the shared-deck simulation finishes. */
+/** 在共用牌堆模拟完成前，先展示快速、确定性的条件概率模型结果。 */
 export function estimateConditionalMultiway(hero: string[], board: string[], opponents: number): ConditionalWinAnalysis | undefined {
   if (hero.length !== 2 || (board.length !== 3 && board.length !== 4)) return undefined;
   const cardsRemaining = (5 - board.length) as 1 | 2;
@@ -454,7 +454,7 @@ export function estimateConditionalMultiway(hero: string[], board: string[], opp
   return buildConditionalWinAnalysis("model", cardsRemaining, available.length, singleRates, runoutRates);
 }
 
-/** Rebuilds the same buckets from conditional multiway wins observed in Monte Carlo. */
+/** 根据蒙特卡洛模拟中观测到的多人条件胜率，重新构建相同的分组。 */
 export function monteCarloConditionalMultiway(
   runouts: Map<string, { cards: string[]; wins: number; samples: number }>,
   currentCards: string[],
@@ -478,9 +478,8 @@ export function monteCarloConditionalMultiway(
 }
 
 /**
- * Deals every unknown card from one shared deck, so board cards and all
- * opponents are correlated exactly as they are at a real table. A stable seed
- * makes the displayed answer and regression tests reproducible.
+ * 从同一副牌中发出所有未知牌，使公共牌与各对手手牌之间的相关性符合真实牌局。
+ * 使用固定种子，确保展示结果与回归测试可以复现。
  */
 export async function simulateMultiway(
   hero: string[],

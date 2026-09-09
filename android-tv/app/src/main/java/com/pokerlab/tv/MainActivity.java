@@ -60,7 +60,7 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public final class MainActivity extends Activity {
-    private static final String DEFAULT_BASE_URL = "https://tv.example.com";
+    private static final String DEFAULT_BASE_URL = BuildConfig.DEFAULT_SERVER_URL;
     private static final String PREFS = "poker_lab_tv";
     private static final String PREF_BASE_URL = "base_url";
     private static final String PREF_AUTH_USERNAME = "auth_username";
@@ -179,9 +179,9 @@ public final class MainActivity extends Activity {
         nativeDashboard.setVisibility(View.GONE);
         root.addView(nativeDashboard, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        // This is a real Android button, not a DOM element. Older TCL WebViews can render the
-        // server HTML but cannot hydrate the modern React bundle, so native focus/click handling
-        // is the compatibility boundary that keeps DPAD_CENTER and ENTER reliable.
+        // 使用 Android 原生按钮。旧版 TCL WebView 能渲染服务器返回的 HTML，
+        // 但无法运行现代 React 代码来绑定交互，因此由原生代码处理焦点与点击，
+        // 确保遥控器确认键 DPAD_CENTER 和回车键 ENTER 正常工作。
         controlButton = new AdvanceButton();
         controlButton.setOnClickListener(view -> advanceLevelNatively());
         FrameLayout.LayoutParams advanceParams = new FrameLayout.LayoutParams(
@@ -1126,8 +1126,8 @@ public final class MainActivity extends Activity {
                     controlButton.setLevel(next.currentLevel);
                     controlButton.setEnabled(next.currentLevel < 10);
                     updateDashboardPresentation();
-                    // Legacy WebViews cannot run the React polling code. Reloading only when the
-                    // API version changes gives them the same live data without flashing every poll.
+                    // 旧版 WebView 无法运行 React 轮询代码，因此仅在接口版本变化时重新加载，
+                    // 既能同步最新数据，也能避免每次轮询都引起画面闪烁。
                     if (previousVersion >= 0 && previousVersion != next.version && webView != null) {
                         webView.reload();
                     }
@@ -1198,9 +1198,8 @@ public final class MainActivity extends Activity {
     private TextView textPx(String value, int size, int color, boolean bold) {
         TextView view = new TextView(this);
         view.setText(value);
-        // Television viewing distance needs a larger optical size than a desktop screenshot.
-        // Geometry continues to follow the viewport percentage scale while typography gets a
-        // consistent readability boost on both 1080p and 4K output surfaces.
+        // 电视观看距离较远，字号需大于桌面截图中的显示尺寸。
+        // 布局继续按视口比例缩放，同时放大文字，确保 1080p 和 4K 输出均清晰可读。
         view.setTextSize(TypedValue.COMPLEX_UNIT_PX, Math.round(px(size) * 1.5f));
         view.setTextColor(color);
         view.setIncludeFontPadding(false);
@@ -1253,17 +1252,16 @@ public final class MainActivity extends Activity {
         int widthPixels = logicalMetrics.widthPixels;
         int heightPixels = logicalMetrics.heightPixels;
 
-        // Several Android TV firmwares render applications on a 4K surface while exposing a
-        // 1920 × 1080 logical resource configuration.  Layout weights still fill the screen in
-        // that situation, but every fixed pixel size (especially text) becomes visually half
-        // sized.  Real display metrics retain the panel/output resolution on those devices.
+        // 部分 Android TV 固件以 4K 分辨率渲染应用，却提供 1920 × 1080 的逻辑资源尺寸。
+        // 此时按权重分配的布局仍能铺满屏幕，但固定像素尺寸，尤其是文字，看起来会缩小一半。
+        // 使用真实显示参数，才能保留这些设备实际的面板或输出分辨率。
         DisplayMetrics realMetrics = new DisplayMetrics();
         try {
             getWindowManager().getDefaultDisplay().getRealMetrics(realMetrics);
             widthPixels = Math.max(widthPixels, realMetrics.widthPixels);
             heightPixels = Math.max(heightPixels, realMetrics.heightPixels);
         } catch (RuntimeException ignored) {
-            // Keep the resource metrics fallback for unusual vendor WindowManager builds.
+            // 对于厂商特殊实现的 WindowManager，保留资源显示参数作为回退方案。
         }
 
         float scale = Math.min(widthPixels / 1920f, heightPixels / 1080f);

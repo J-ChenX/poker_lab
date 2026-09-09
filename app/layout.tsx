@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://site.example.com"),
+  metadataBase: new URL(process.env.POKER_SITE_URL || "http://localhost:3000"),
   title: "牌桌积分簿｜德州扑克电子记分系统",
   description: "为 3–12 人德州牌局自动计算名次积分、复活扣分和淘汰奖励。",
   openGraph: {

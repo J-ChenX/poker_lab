@@ -362,9 +362,9 @@
 }
 
 /*
- * TCL's bundled WebView understands grid but not CSS clamp(). Production CSS
- * minification removes the preceding duplicate declaration, so TV mode needs
- * an explicit rule that survives the build instead of inheriting 16px text.
+ * TCL 内置 WebView 支持网格布局，但不支持 CSS 的 clamp()。
+ * 生产构建压缩 CSS 时会删除前面重复的声明，因此电视模式需使用独立规则，
+ * 确保构建后仍保留所需字号，避免回退为 16px。
  */
 :global(html[data-tv-app="1"]) .sectionHead h1 { font-size: 32px; }
 :global(html[data-tv-app="1"]) .playerList { gap: 8px; }

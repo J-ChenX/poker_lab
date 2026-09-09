@@ -3,7 +3,7 @@ package com.pokerlab.tv;
 final class Rulebook {
     static final int[] SMALL_BLINDS = {5, 10, 20, 30, 50, 70, 100, 150, 200, 300};
     static final int[] BIG_BLINDS = {10, 20, 40, 60, 100, 140, 200, 300, 400, 600};
-    // Initial stack plus 500 per level, capped at two initial stacks.
+    // 从初始筹码数开始，每升一级增加 500，最多为初始筹码的两倍。
     static final int[] REVIVE_CHIPS = {2000, 2500, 3000, 3500, 4000, 4000, 4000, 0, 0, 0};
 
     private Rulebook() {}

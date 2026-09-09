@@ -3,7 +3,7 @@ export const MAX_PLAYERS = 12;
 
 export const INITIAL_CHIPS = 2_000;
 
-// Start at the initial stack, add 500 per level, and cap at two initial stacks.
+// 从初始筹码数开始，每升一级增加 500，最多为初始筹码的两倍。
 export const BLIND_LEVELS = [
   { level: 1, small: 5, big: 10, chips: 2_000, exchange: null },
   { level: 2, small: 10, big: 20, chips: 2_500, exchange: "收回 5 面额筹码" },

@@ -1,6 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Git 忽略规则说明：https://help.github.com/articles/ignoring-files/
 
-# dependencies
+# 依赖文件
 /node_modules
 /.pnp
 .pnp.*
@@ -10,29 +10,36 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
+# 测试覆盖率报告
 /coverage
 
-# next.js
+# Next.js 和 vinext 构建产物
 /.next/
 /.vinext/
 /out/
 
-# misc
+# 系统杂项与私钥文件
 .DS_Store
 *.pem
 
-# debug
+# 调试日志
 npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# 本地环境配置不提交，仅保留可公开的配置示例。
 .env*
+!.env.example
 
-# vercel
+# Sites 本地部署配置，包含私人项目标识。
+/.openai/hosting.json
+
+# Word 原稿仅在本地保留，仓库上传对应的 Markdown 说明书。
+/德州扑克升盲与积分规则说明书.docx
+
+# Vercel 本地配置
 .vercel
 
 /dist/
@@ -45,7 +52,7 @@ yarn-error.log*
 /build_poker_rules_manual.py
 *.tsbuildinfo
 
-# Android TV local build files
+# Android TV 本地配置与构建产物
 /android-tv/.gradle/
 /android-tv/local.properties
 /android-tv/app/build/

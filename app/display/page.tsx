@@ -9,7 +9,7 @@ export default async function DisplayPage() {
     await ensureScoreStateSchema();
     initialState = await readScoreState();
   } catch {
-    // The client keeps retrying when the database or tunnel is temporarily unavailable.
+    // 数据库或隧道暂时不可用时，由客户端持续重试。
   }
   return <DisplayClient initialState={initialState} />;
 }
