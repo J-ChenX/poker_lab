@@ -4,6 +4,50 @@ import test from "node:test";
 import { boardCategoryCatalogue, enumerateExact, estimateConditionalMultiway, estimateMultiway, evaluate, exactMultiwayDealCount, monteCarloConditionalMultiway, monteCarloHope, simulateMultiway } from "../app/poker";
 import { PREFLOP_MULTIWAY } from "../app/preflop-calibration.generated";
 import { preflopResult } from "../app/preflop";
+import { breakEvenCallAmount } from "../app/pot-odds";
+
+test("break-even calls zero the existing EV formula and handle certain outcomes", () => {
+  for (const [pot, equity] of [[100, 25], [100, 50], [100, 80], [0, 25], [100, 0], [100, 99.99]]) {
+    const call = breakEvenCallAmount(pot, equity)!;
+    assert.ok(Math.abs(equity / 100 * (pot + call) - call) < 1e-8);
+  }
+  assert.equal(breakEvenCallAmount(100, 50), 100);
+  assert.equal(breakEvenCallAmount(100, 80), 400);
+  assert.equal(breakEvenCallAmount(100, 100), null);
+  assert.equal(breakEvenCallAmount(0, 100), null);
+});
+
+test("10–12 player estimates and simulations support every street, including all 27 preflop dimensions", async () => {
+  for (const opponents of [9, 10, 11]) {
+    for (const board of [[], ["Qs", "Jh", "2d"], ["Qs", "Jh", "2d", "10c"], ["Qs", "Jh", "2d", "10c", "9s"]]) {
+      const estimate = estimateMultiway(["As", "Kh"], board, opponents);
+      const simulation = await simulateMultiway(["As", "Kh"], board, opponents, 4_096);
+      for (const result of [estimate.table!, simulation]) {
+        assert.ok([result.win, result.tie, result.lose, result.equity].every((value) => Number.isFinite(value) && value >= 0 && value <= 100));
+        assert.ok(Math.abs(result.win + result.tie + result.lose - 100) < 1e-9);
+      }
+    }
+  }
+});
+
+test("a shared royal flush splits the pot twelve ways", async () => {
+  const board = ["As", "Ks", "Qs", "Js", "10s"];
+  const estimate = estimateMultiway(["2h", "3d"], board, 11);
+  const simulation = await simulateMultiway(["2h", "3d"], board, 11, 4_096);
+  for (const result of [estimate.table!, simulation]) {
+    assert.equal(result.win, 0);
+    assert.equal(result.tie, 100);
+    assert.equal(result.lose, 0);
+    assert.ok(Math.abs(result.equity - 100 / 12) < 1e-9);
+  }
+});
+
+test("invalid table sizes cannot enter a simulation", async () => {
+  for (const opponents of [0, 12, 1.5, NaN, Infinity]) {
+    assert.throws(() => estimateMultiway(["As", "Kh"], [], opponents), /整数/);
+    await assert.rejects(simulateMultiway(["As", "Kh"], [], opponents), /整数/);
+  }
+});
 
 test("counts legal two-opponent deals without replacement", () => {
   assert.equal(exactMultiwayDealCount(5, 2), 446_985n);

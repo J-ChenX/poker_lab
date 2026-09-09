@@ -1,0 +1,175 @@
+{
+  "source": "Unoptimized app/poker.ts, captured 2026-09-09; SHA-256 of JSON, Maps encoded as entry arrays",
+  "hero": [
+    "As",
+    "Kh"
+  ],
+  "samples": 10000,
+  "scenarios": [
+    {
+      "board": [],
+      "opponents": 1,
+      "estimate": "18fb6ef265ae331b45ae1cfd607144d6334deeea4529cadd98826a58281fa921",
+      "simulation": "5aecb0c3994627d2cbce80f4c0b22d8c35133f9cbf0e51f278d2d6ea5a4da020"
+    },
+    {
+      "board": [],
+      "opponents": 2,
+      "estimate": "cdf2ea77026d13936ea2b62bcfde81ea74c080f066f225c5ef2e265ec4d3ad51",
+      "simulation": "ec00e7117108c8c2ac3c6f601a3f92189c0a69ea50651e55ced3cf8b3f41852e"
+    },
+    {
+      "board": [],
+      "opponents": 4,
+      "estimate": "013317c88cc7a7a7673b9cc9ba52a5162957950a380ce219d78792700edc2e43",
+      "simulation": "67a94740858eb60f995bfa8f2f589c64b9a4a7e84dc24a2fca15f3c0ba1eb48d"
+    },
+    {
+      "board": [],
+      "opponents": 8,
+      "estimate": "ad12a02f7c9cdf56e63b7e714b79db724394a57815b742ad252dab402cf84a69",
+      "simulation": "2586b3101b00b6a7eb58895f008f3e142c22b12ed6ae1f871129b35db57921ee"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d"
+      ],
+      "opponents": 1,
+      "estimate": "7485702d864caa8a49356b1279bca57b95285c6117b80d1d376d76f3624ecba8",
+      "simulation": "efdf2d77ed80f1b89c6b9d52b95bbcaed7d3579e2521ead95effbb22cf3c340d"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d"
+      ],
+      "opponents": 2,
+      "estimate": "8d7950b35ecf3c091e01ded21d339a4c05de50a96aa0ab14658c71d375a43fd7",
+      "simulation": "a1b20ccb65607deda7927bccbb8836b37b96de3a7d24fc762d8cce2ea4b9a1b5"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d"
+      ],
+      "opponents": 4,
+      "estimate": "7518542f874aac918978f1364f4f05cc3dae2f4d5cfc645dae552c3c3748278b",
+      "simulation": "7c1b8cafcfc8d6807a86bfa58daa64fee2b14f8b459406c388c28e842e390a38"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d"
+      ],
+      "opponents": 8,
+      "estimate": "7662a82887ee037bcafd484231938c3d100fa038a213a4dae36b41e876fba922",
+      "simulation": "e21caa842bd2a48a39975c5aa75621a18bf5156037b3a372f797844f630dc25f"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c"
+      ],
+      "opponents": 1,
+      "estimate": "39875b1a7f87b679f7ead5a1aff5798e5e7b1f07d46937a71685ad0de0514fab",
+      "simulation": "4d234be972761270becfbf9bafb872c54ced761339735ddd40ef532e2556e88e"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c"
+      ],
+      "opponents": 2,
+      "estimate": "a8f333dc87aceed814e10b5becda1557eecc01b47546c843800d9cc9fc26fb90",
+      "simulation": "f06f12590be694dbc97ebc33d528c487dea1b06bada0279b28261519a1100576"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c"
+      ],
+      "opponents": 4,
+      "estimate": "e9a103e737dc14794802dba4f611cc50fc8f56dcadae9b3e567e7ba574ddfa3f",
+      "simulation": "11bc0e522730fed478870281c6183045afac80908c28290c0804f462bb8a9ade"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c"
+      ],
+      "opponents": 8,
+      "estimate": "6819713844ce61f63526328232a6f830234e2813958de3c82d9cb1d5f07b5668",
+      "simulation": "256a6820b7bed9259d254a77f037e88ac2227fec2c5647bf7ca7309c4cc8b644"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c",
+        "9s"
+      ],
+      "opponents": 1,
+      "estimate": "ea9b3320b1c6633b71cad28ccab8cfb11bf51ba2229bd42b9d8f53bd0a549f52",
+      "simulation": "a021a641954da7a085470fdb826a63fc339c8a051e62848bbddaf2a41f0e5e30"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c",
+        "9s"
+      ],
+      "opponents": 2,
+      "estimate": "094b019e62a5b75e53f0ab1a27aa20a818a134ffa1709917f686619cfd0be371",
+      "simulation": "1273c495aab1e7bf26eae048a519d1d4239042ec12d3f7614861d1f0bda893b0"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c",
+        "9s"
+      ],
+      "opponents": 4,
+      "estimate": "bfe5edc14cafe8b7376034b54bffb1b2743fef5f4bc6c2ab1b7435b22b7dbdd0",
+      "simulation": "4f7203acb7dc1bcf7209b92ed38c1a448a2df2b4a3edb2a09993c225d2e3e2e0"
+    },
+    {
+      "board": [
+        "Qs",
+        "Jh",
+        "2d",
+        "10c",
+        "9s"
+      ],
+      "opponents": 8,
+      "estimate": "b44d7ac63c4757e6c3c13901ad55fdb159d46ff3b5cf8ab68e02843a039e653b",
+      "simulation": "a6c721f9f1e6d21724c8fea8f783927bd66f189ba9795d112d13fa288237e31f"
+    }
+  ],
+  "conditional": {
+    "board": [
+      "Qs",
+      "Jh",
+      "2d"
+    ],
+    "fingerprint": "22e26b8a79bebd5cd7992fb4719663bd02e81d6625703632b4403e85c7ec1f52"
+  },
+  "workerFingerprint": "9f16fb1a4c1c1829285130b3f3afd57eabcc67b12edd8477b22dd7c3738d893e"
+}

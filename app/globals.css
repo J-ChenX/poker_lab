@@ -17,9 +17,15 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .input-area { min-width:0; display:grid; grid-template-columns:.8fr 1.5fr; }
 .card-panel { padding:30px; border-bottom:1px solid var(--line); }.hole-panel { border-right:1px solid var(--line); }
 .section-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:28px; }.section-head>div { display:flex; align-items:center; gap:11px; }.section-head h2 { margin:0; font-size:15px; }.step { color:var(--green); font:800 10px monospace; }
-.cards-row { display:flex; gap:11px; }.playing-card { width:88px; height:122px; border:1px solid var(--ink); border-radius:8px; background:white; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; padding:11px; cursor:pointer; box-shadow:0 5px 0 #10151310; transition:outline-color .18s,box-shadow .18s; }
-.playing-card:hover:not(:disabled) { outline:2px solid var(--green); outline-offset:2px; }.card-rank { font:700 27px Georgia,serif; }.card-suit { font-size:27px; align-self:flex-end; }.playing-card.red { color:var(--red); }
-.playing-card.ghost { border:1px dashed #aaa99f; color:#828780; background:transparent; align-items:center; justify-content:center; box-shadow:none; gap:2px; }.playing-card.ghost:hover:not(:disabled) { color:var(--green); }.playing-card.ghost small { font-size:9px; }.plus { font-size:22px; font-weight:300; }
+.cards-row { display:flex; gap:11px; }.playing-card { width:88px; height:122px; border:1px solid var(--ink); border-radius:8px; background:white; display:flex; flex-direction:column; justify-content:space-between; align-items:flex-start; padding:11px; cursor:pointer; box-shadow:0 5px 0 #10151310; transition:border-color .18s,background-color .18s,box-shadow .18s; }
+/* Keep the hover ring inside the card so the first flop card is not clipped
+   by the horizontal scroll container. Touch devices retain their normal state. */
+@media (hover:hover) {
+  .playing-card:hover:not(:disabled) { border-color:var(--green); background:#f5faf7; box-shadow:inset 0 0 0 1px var(--green),0 5px 0 #0b624214; }
+  .playing-card.ghost:hover:not(:disabled) { border-color:var(--green); background:#f5faf7; box-shadow:inset 0 0 0 1px var(--green); }
+}
+.playing-card:focus-visible { outline:2px solid var(--green); outline-offset:-5px; }.card-rank { font:700 27px Georgia,serif; }.card-suit { font-size:27px; align-self:flex-end; }.playing-card.red { color:var(--red); }
+.playing-card.ghost { border:1px dashed #aaa99f; color:#828780; background:transparent; align-items:center; justify-content:center; box-shadow:none; gap:2px; }.playing-card.ghost small { font-size:9px; }.plus { font-size:22px; font-weight:300; }
 .board-streets { display:flex; align-items:flex-start; gap:19px; overflow-x:auto; padding:2px 2px 7px; scrollbar-width:thin; }
 .street-group { display:flex; flex-direction:column; align-items:flex-start; gap:7px; }
 .street-group>span { color:#949890; font:700 8px monospace; line-height:1; }
@@ -84,6 +90,8 @@ button,a { font:inherit; } button { color:inherit; } main { min-height:100vh; ov
 .decision-metrics { display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:13px; }
 .decision-metrics span { display:flex; flex-direction:column; gap:4px; color:#87918b; font-size:8px; }
 .decision-metrics b { color:white; font-size:11px; }
+.decision-metrics .breakeven-metric { grid-column:1/-1; flex-direction:row; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:6px 12px; margin-top:5px; padding-top:10px; border-top:1px solid #ffffff26; font-size:12px; }
+.decision-metrics .breakeven-metric b { font-size:15px; overflow-wrap:anywhere; }
 .decision-card>p { border-top:1px solid #303934; padding-top:11px; margin-top:12px; }
 @media(max-width:520px){.decision-metrics{grid-template-columns:1fr 1fr 1fr}}
 .catalogue-section { grid-template-columns:.62fr 1.38fr; align-items:start; }

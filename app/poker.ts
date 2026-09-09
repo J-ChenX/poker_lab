@@ -1,3 +1,5 @@
+import { createEvaluator, encodeCard, unpackScore } from "./poker-evaluator";
+
 export const RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"] as const;
 export const SUITS = [
   { code: "s", symbol: "♠", name: "黑桃" },
@@ -86,47 +88,19 @@ export type BoardCategory = {
 const valueOf = (card: string) => RANKS.indexOf(card.slice(0, -1) as (typeof RANKS)[number]) + 2;
 
 function straightHigh(values: number[]) {
-  const present = new Set(values);
-  if (present.has(14)) present.add(1);
-  for (let high = 14; high >= 5; high--) {
-    let found = true;
-    for (let offset = 0; offset < 5; offset++) if (!present.has(high - offset)) found = false;
-    if (found) return high;
+  let mask = 0;
+  for (const value of values) mask |= 1 << (value - 2);
+  for (let high = 14; high >= 6; high--) {
+    const straight = 31 << (high - 6);
+    if ((mask & straight) === straight) return high;
   }
-  return 0;
+  return (mask & 0x100f) === 0x100f ? 5 : 0;
 }
 
-// 直接评估 5–7 张牌的最佳牌型，无需生成所有五张牌子集，
-// 从而将翻牌阶段完整枚举的计算量控制在可接受范围内。
+// Public score arrays are retained for UI and exact-enumeration compatibility.
+const publicEvaluator = createEvaluator();
 export function evaluate(cards: string[]): Score {
-  const counts = Array(15).fill(0) as number[];
-  const suitValues: Record<string, number[]> = { s: [], h: [], d: [], c: [] };
-  for (const card of cards) {
-    const value = valueOf(card);
-    counts[value]++;
-    suitValues[card.slice(-1)].push(value);
-  }
-  const ranks = Array.from({ length: 13 }, (_, index) => index + 2).filter((rank) => counts[rank]).sort((a, b) => b - a);
-  const flushRanks = Object.values(suitValues).find((values) => values.length >= 5)?.sort((a, b) => b - a);
-  if (flushRanks) {
-    const high = straightHigh(flushRanks);
-    if (high) return [8, high];
-  }
-  const quads = ranks.filter((rank) => counts[rank] === 4);
-  if (quads.length) return [7, quads[0], ranks.find((rank) => rank !== quads[0])!];
-  const trips = ranks.filter((rank) => counts[rank] === 3);
-  const pairs = ranks.filter((rank) => counts[rank] >= 2);
-  if (trips.length && pairs.some((rank) => rank !== trips[0])) return [6, trips[0], pairs.find((rank) => rank !== trips[0])!];
-  if (flushRanks) return [5, ...flushRanks.slice(0, 5)];
-  const straight = straightHigh(ranks);
-  if (straight) return [4, straight];
-  if (trips.length) return [3, trips[0], ...ranks.filter((rank) => rank !== trips[0]).slice(0, 2)];
-  if (pairs.length >= 2) {
-    const [highPair, lowPair] = pairs;
-    return [2, highPair, lowPair, ranks.find((rank) => rank !== highPair && rank !== lowPair)!];
-  }
-  if (pairs.length === 1) return [1, pairs[0], ...ranks.filter((rank) => rank !== pairs[0]).slice(0, 3)];
-  return [0, ...ranks.slice(0, 5)];
+  return unpackScore(publicEvaluator.evaluate(cards.map(encodeCard)));
 }
 
 export function compareScores(a: Score, b: Score) {
@@ -152,17 +126,19 @@ export function boardCombinationDistribution(hero: string[], board: string[]) {
   const available = DECK.filter((card) => !used.has(card));
   const drawCount = 7 - board.length;
   const counts = Array(9).fill(0) as number[];
-  const selected: string[] = [];
+  const selected: number[] = board.map(encodeCard);
+  const encodedAvailable = available.map(encodeCard);
+  const evaluator = createEvaluator();
   let samples = 0;
   const enumerate = (start: number) => {
-    if (selected.length === drawCount) {
-      counts[evaluate([...board, ...selected])[0]]++;
+    if (selected.length === 7) {
+      counts[evaluator.evaluate(selected) >>> 20]++;
       samples++;
       return;
     }
-    const needed = drawCount - selected.length;
+    const needed = 7 - selected.length;
     for (let index = start; index <= available.length - needed; index++) {
-      selected.push(available[index]);
+      selected.push(encodedAvailable[index]);
       enumerate(index + 1);
       selected.pop();
     }
@@ -206,7 +182,7 @@ function twoEdgeMatchings(edges: number, degrees: number[]) {
 
 export const MULTIWAY_MONTE_CARLO_SAMPLES = 500_000;
 export const QUICK_ESTIMATE_SAMPLES = 4_096;
-const HALTON_BASES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73];
+const HALTON_BASES = [2, 3, 5, 7, 11, 13, 17, 19, 23, 29, 31, 37, 41, 43, 47, 53, 59, 61, 67, 71, 73, 79, 83, 89, 97, 101, 103];
 
 function scenarioSeed(hero: string[], board: string[], opponents: number) {
   let hash = 0x811c9dc5;
@@ -243,8 +219,16 @@ function haltonShifts(seed: number, dimensions: number) {
   return Array.from({ length: dimensions }, () => random());
 }
 
+// Reuse the base sequence across the 1,081 conditional flop boards.
+const haltonSequences: Float64Array[] = [];
 function haltonValue(sample: number, dimension: number, shifts: number[]) {
-  return (radicalInverse(sample + 1, HALTON_BASES[dimension]) + shifts[dimension]) % 1;
+  let sequence = haltonSequences[dimension];
+  if (!sequence) {
+    sequence = Float64Array.from({ length: QUICK_ESTIMATE_SAMPLES }, (_, index) => radicalInverse(index + 1, HALTON_BASES[dimension]));
+    haltonSequences[dimension] = sequence;
+  }
+  const value = (sample < sequence.length ? sequence[sample] : radicalInverse(sample + 1, HALTON_BASES[dimension])) + shifts[dimension];
+  return value >= 1 ? value - 1 : value;
 }
 
 /**
@@ -260,9 +244,9 @@ export function estimateMultiway(
   samples = QUICK_ESTIMATE_SAMPLES,
 ): ExactResult {
   if (hero.length !== 2 || (board.length !== 0 && (board.length < 3 || board.length > 5))) throw new Error("快速估算需要两张底牌以及 0、3、4 或 5 张公共牌");
-  if (opponents < 1 || opponents > 8) throw new Error("对手人数需要在 1 到 8 之间");
+  if (!Number.isInteger(opponents) || opponents < 1 || opponents > 11) throw new Error("对手人数需要是 1 到 11 之间的整数");
   const used = new Set([...hero, ...board]);
-  const deck = DECK.filter((card) => !used.has(card));
+  const deck = DECK.filter((card) => !used.has(card)).map(encodeCard);
   const missingBoard = 5 - board.length;
   const drawCount = missingBoard + opponents * 2;
   const totalSamples = Math.max(256, Math.floor(samples));
@@ -271,27 +255,32 @@ export function estimateMultiway(
   const table = { win: 0, tie: 0, lose: 0, equity: 0 };
   const categories = Array(9).fill(0) as number[];
 
+  const evaluator = createEvaluator();
+  const encodedHero = hero.map(encodeCard);
+  const finalBoard = new Uint8Array(5);
+  finalBoard.set(board.map(encodeCard));
+  const swaps = new Uint8Array(drawCount);
   for (let sample = 0; sample < totalSamples; sample++) {
-    const swaps: number[] = [];
     for (let index = 0; index < drawCount; index++) {
       const target = index + Math.floor(haltonValue(sample, index, shifts) * (deck.length - index));
-      swaps.push(target);
+      swaps[index] = target;
       [deck[index], deck[target]] = [deck[target], deck[index]];
     }
-    const finalBoard = [...board, ...deck.slice(0, missingBoard)];
-    const heroScore = evaluate([...hero, ...finalBoard]);
-    categories[heroScore[0]]++;
+    for (let index = 0; index < missingBoard; index++) finalBoard[board.length + index] = deck[index];
+    evaluator.setBoard(finalBoard);
+    const heroScore = evaluator.pair(encodedHero[0], encodedHero[1]);
+    categories[heroScore >>> 20]++;
     let beaten = false;
     let tiedOpponents = 0;
     for (let opponent = 0; opponent < opponents; opponent++) {
       const start = missingBoard + opponent * 2;
-      const comparison = compareScores(heroScore, evaluate([deck[start], deck[start + 1], ...finalBoard]));
+      const comparison = heroScore - evaluator.pair(deck[start], deck[start + 1]);
       if (opponent === 0) {
         if (comparison > 0) { headsUp.win++; headsUp.equity++; }
         else if (comparison === 0) { headsUp.tie++; headsUp.equity += .5; }
         else headsUp.lose++;
       }
-      if (comparison < 0) beaten = true;
+      if (comparison < 0) { beaten = true; break; }
       else if (comparison === 0) tiedOpponents++;
     }
     if (beaten) table.lose++;
@@ -371,14 +360,16 @@ function buildConditionalWinAnalysis(
 
 function fixedBoardMultiwayWinRate(hero: string[], board: string[], opponents: number, samples: number) {
   const used = new Set([...hero, ...board]);
-  const deck = DECK.filter((card) => !used.has(card));
-  const heroScore = evaluate([...hero, ...board]);
+  const deck = DECK.filter((card) => !used.has(card)).map(encodeCard);
+  const evaluator = createEvaluator();
+  evaluator.setBoard(board.map(encodeCard));
+  const heroScore = evaluator.pair(encodeCard(hero[0]), encodeCard(hero[1]));
   const outcomes = new Uint8Array(deck.length * deck.length);
   let winningEdges = 0;
   const winningDegrees = Array(deck.length).fill(0) as number[];
   for (let first = 0; first < deck.length - 1; first++) {
     for (let second = first + 1; second < deck.length; second++) {
-      const heroWins = compareScores(heroScore, evaluate([deck[first], deck[second], ...board])) > 0;
+      const heroWins = heroScore > evaluator.pair(deck[first], deck[second]);
       outcomes[first * deck.length + second] = heroWins ? 1 : 0;
       if (heroWins) {
         winningEdges++;
@@ -391,20 +382,26 @@ function fixedBoardMultiwayWinRate(hero: string[], board: string[], opponents: n
   if (opponents === 2) {
     return twoEdgeMatchings(winningEdges, winningDegrees) / Number(matchingCount(deck.length, 2)) * 100;
   }
+  if (winningEdges === 0) return 0;
+  if (winningEdges === chooseTwo(deck.length)) return 100;
 
   const drawCount = opponents * 2;
   const shifts = haltonShifts(scenarioSeed(hero, board, opponents) ^ 0x68bc21eb, drawCount);
   let wins = 0;
   const indices = Array.from({ length: deck.length }, (_, index) => index);
+  const swaps = new Uint8Array(drawCount);
   for (let sample = 0; sample < samples; sample++) {
-    const swaps: number[] = [];
-    for (let index = 0; index < drawCount; index++) {
-      const target = index + Math.floor(haltonValue(sample, index, shifts) * (indices.length - index));
-      swaps.push(target);
-      [indices[index], indices[target]] = [indices[target], indices[index]];
-    }
+    let drawn = 0;
     let heroBeatsAll = true;
     for (let opponent = 0; opponent < opponents; opponent++) {
+      // Halton dimensions are independent: once one opponent beats or ties
+      // hero, unused dimensions cannot change this sample's strict-win result.
+      for (let card = 0; card < 2; card++) {
+        const index = drawn++;
+        const target = index + Math.floor(haltonValue(sample, index, shifts) * (indices.length - index));
+        swaps[index] = target;
+        [indices[index], indices[target]] = [indices[target], indices[index]];
+      }
       const first = indices[opponent * 2];
       const second = indices[opponent * 2 + 1];
       const low = Math.min(first, second);
@@ -412,7 +409,7 @@ function fixedBoardMultiwayWinRate(hero: string[], board: string[], opponents: n
       if (!outcomes[low * deck.length + high]) { heroBeatsAll = false; break; }
     }
     if (heroBeatsAll) wins++;
-    for (let index = drawCount - 1; index >= 0; index--) {
+    for (let index = drawn - 1; index >= 0; index--) {
       const target = swaps[index];
       [indices[index], indices[target]] = [indices[target], indices[index]];
     }
@@ -488,12 +485,13 @@ export async function simulateMultiway(
   samples = MULTIWAY_MONTE_CARLO_SAMPLES,
   onProgress?: (progress: number) => void,
   signal?: AbortSignal,
+  options: { yieldToEventLoop?: boolean } = {},
 ) {
   if (hero.length !== 2 || (board.length !== 0 && (board.length < 3 || board.length > 5))) throw new Error("多人蒙特卡洛需要两张底牌以及 0、3、4 或 5 张公共牌");
-  if (opponents < 1 || opponents > 8) throw new Error("对手人数需要在 1 到 8 之间");
+  if (!Number.isInteger(opponents) || opponents < 1 || opponents > 11) throw new Error("对手人数需要是 1 到 11 之间的整数");
   if (signal?.aborted) throw new DOMException("计算已取消", "AbortError");
   const used = new Set([...hero, ...board]);
-  const deck = DECK.filter((card) => !used.has(card));
+  const deck = DECK.filter((card) => !used.has(card)).map(encodeCard);
   const missingBoard = 5 - board.length;
   const drawCount = missingBoard + opponents * 2;
   const totalSamples = Math.max(1, Math.floor(samples));
@@ -502,35 +500,40 @@ export async function simulateMultiway(
   const totals = { win: 0, tie: 0, lose: 0, equity: 0, equitySquared: 0 };
   const headsUp = { win: 0, tie: 0, lose: 0, equity: 0 };
   const categories = Array(9).fill(0) as number[];
-  const heroScores = new Map<string, Score>();
+  const evaluator = createEvaluator();
+  const encodedHero = hero.map(encodeCard);
+  const finalBoard = new Uint8Array(5);
+  finalBoard.set(board.map(encodeCard));
+  const swaps = new Uint8Array(drawCount);
+  const heroScores = new Uint32Array(52 * 52);
+  const runoutIndex: Array<{ cards: string[]; category: number; equity: number; wins: number; samples: number } | undefined> = new Array(52 * 52);
   const runouts = new Map<string, { cards: string[]; category: number; equity: number; wins: number; samples: number }>();
+  let lastProgress = performance.now();
 
   for (let sample = 0; sample < totalSamples; sample++) {
     if (sample % 256 === 0 && signal?.aborted) throw new DOMException("计算已取消", "AbortError");
-    const swaps: number[] = [];
     for (let index = 0; index < drawCount; index++) {
       const target = index + Math.floor(random() * (deck.length - index));
-      swaps.push(target);
+      swaps[index] = target;
       [deck[index], deck[target]] = [deck[target], deck[index]];
     }
 
-    const runout = deck.slice(0, missingBoard);
-    const finalBoard = [...board, ...runout];
-    const boardKey = board.length >= 3 ? (missingBoard ? [...runout].sort().join("|") : "river") : "";
-    let heroScore = board.length >= 3 ? heroScores.get(boardKey) : undefined;
+    for (let index = 0; index < missingBoard; index++) finalBoard[board.length + index] = deck[index];
+    evaluator.setBoard(finalBoard);
+    const boardKey = missingBoard === 2 ? Math.min(deck[0], deck[1]) * 52 + Math.max(deck[0], deck[1]) : missingBoard === 1 ? deck[0] : 0;
+    let heroScore = board.length >= 3 ? heroScores[boardKey] : 0;
     if (!heroScore) {
-      heroScore = evaluate([...hero, ...finalBoard]);
-      if (board.length >= 3) heroScores.set(boardKey, heroScore);
+      heroScore = evaluator.pair(encodedHero[0], encodedHero[1]);
+      if (board.length >= 3) heroScores[boardKey] = heroScore;
     }
     let tiedOpponents = 0;
     let beaten = false;
     let firstComparison = 0;
     for (let opponent = 0; opponent < opponents; opponent++) {
       const start = missingBoard + opponent * 2;
-      const opponentScore = evaluate([deck[start], deck[start + 1], ...finalBoard]);
-      const comparison = compareScores(heroScore, opponentScore);
+      const comparison = heroScore - evaluator.pair(deck[start], deck[start + 1]);
       if (opponent === 0) firstComparison = comparison;
-      if (comparison < 0) beaten = true;
+      if (comparison < 0) { beaten = true; break; }
       else if (comparison === 0) tiedOpponents++;
     }
     const share = beaten ? 0 : 1 / (tiedOpponents + 1);
@@ -542,13 +545,18 @@ export async function simulateMultiway(
     if (firstComparison > 0) { headsUp.win++; headsUp.equity++; }
     else if (firstComparison === 0) { headsUp.tie++; headsUp.equity += .5; }
     else headsUp.lose++;
-    categories[heroScore[0]]++;
+    categories[heroScore >>> 20]++;
     if (board.length >= 3) {
-      const runoutTotal = runouts.get(boardKey) ?? { cards: runout, category: heroScore[0], equity: 0, wins: 0, samples: 0 };
+      let runoutTotal = runoutIndex[boardKey];
+      if (!runoutTotal) {
+        const cards = deck.slice(0, missingBoard).map((card) => DECK[card]);
+        runoutTotal = { cards, category: heroScore >>> 20, equity: 0, wins: 0, samples: 0 };
+        runoutIndex[boardKey] = runoutTotal;
+        runouts.set(missingBoard ? [...cards].sort().join("|") : "river", runoutTotal);
+      }
       runoutTotal.equity += share;
       if (!beaten && tiedOpponents === 0) runoutTotal.wins++;
       runoutTotal.samples++;
-      runouts.set(boardKey, runoutTotal);
     }
 
     for (let index = drawCount - 1; index >= 0; index--) {
@@ -556,10 +564,16 @@ export async function simulateMultiway(
       [deck[index], deck[target]] = [deck[target], deck[index]];
     }
     if ((sample + 1) % 2_000 === 0 || sample === totalSamples - 1) {
-      onProgress?.((sample + 1) / totalSamples);
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (performance.now() - lastProgress >= 32 || sample === totalSamples - 1) {
+        onProgress?.((sample + 1) / totalSamples);
+        // A dedicated Worker is cancelled by termination and needs no timers.
+        // Other callers retain cooperative cancellation without 250 timer waits.
+        if (options.yieldToEventLoop !== false) await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        lastProgress = performance.now();
+      }
     }
   }
+  if (signal?.aborted) throw new DOMException("计算已取消", "AbortError");
 
   const percent = (value: number) => value / totalSamples * 100;
   const variance = totalSamples > 1
@@ -652,13 +666,18 @@ export async function enumerateExact(
   const currentScore = evaluate([...hero, ...board]);
   const exactRunouts = new Map<string, { cards: string[]; category: number; equity: number; samples: number }>();
   let equity = 0;
+  const evaluator = createEvaluator();
+  const encodedHero = hero.map(encodeCard);
+  let lastProgress = performance.now();
 
   for (let runoutIndex = 0; runoutIndex < runouts.length; runoutIndex++) {
     const runout = runouts[runoutIndex];
     const blocked = new Set(runout);
     const opponentDeck = available.filter((card) => !blocked.has(card));
     const finalBoard = [...board, ...runout];
-    const heroScore = evaluate([...hero, ...finalBoard]);
+    evaluator.setBoard(finalBoard.map(encodeCard));
+    const heroScore = evaluator.pair(encodedHero[0], encodedHero[1]);
+    const encodedOpponents = opponentDeck.map(encodeCard);
     const runoutOutcomes = [0, 0, 0];
     const degrees = {
       win: Array(opponentDeck.length).fill(0) as number[],
@@ -667,9 +686,8 @@ export async function enumerateExact(
     };
     for (let first = 0; first < opponentDeck.length - 1; first++) {
       for (let second = first + 1; second < opponentDeck.length; second++) {
-        const opponentScore = evaluate([opponentDeck[first], opponentDeck[second], ...finalBoard]);
-        const comparison = compareScores(heroScore, opponentScore);
-        categories[heroScore[0]]++;
+        const comparison = heroScore - evaluator.pair(encodedOpponents[first], encodedOpponents[second]);
+        categories[heroScore >>> 20]++;
         if (comparison > 0) {
           outcomes[0]++; runoutOutcomes[0]++; equity += 1;
           if (opponents === 2) {
@@ -707,11 +725,14 @@ export async function enumerateExact(
 
     }
     if (missing > 0) {
-      exactRunouts.set([...runout].sort().join("|"), { cards: runout, category: heroScore[0], equity: runoutEquity, samples: 1 });
+      exactRunouts.set([...runout].sort().join("|"), { cards: runout, category: heroScore >>> 20, equity: runoutEquity, samples: 1 });
     }
     if (runoutIndex % 12 === 0 || runoutIndex === runouts.length - 1) {
-      onProgress?.((runoutIndex + 1) / runouts.length * (opponents > 2 ? .5 : 1));
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+      if (performance.now() - lastProgress >= 32 || runoutIndex === runouts.length - 1) {
+        onProgress?.((runoutIndex + 1) / runouts.length * (opponents > 2 ? .5 : 1));
+        await new Promise<void>((resolve) => setTimeout(resolve, 0));
+        lastProgress = performance.now();
+      }
     }
   }
 

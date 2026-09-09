@@ -87,6 +87,8 @@ L1 与初始筹码一致，后续每级增加 500，最高为两倍初始筹码�
 
 ## 质量检查
 
+胜率引擎的优化记录、复测方式与 GPU 接入评估见 [计算性能与 GPU 可行性](docs/calculation-performance.md)。计算在浏览器独立线程运行，保留 50 万次无放回模拟。
+
 ```bash
 pnpm lint
 pnpm exec tsc --noEmit
@@ -102,3 +104,7 @@ pnpm build
 ```
 
 项目使用 vinext 构建并部署到 OpenAI Sites；`.openai/hosting.json` 声明了 Sites 项目及 D1 绑定。生产访问地址由部署平台和 cpolar 入口配置决定。
+
+## 开源协议
+
+本项目采用 [MIT License](LICENSE) 开源协议。Copyright (c) 2026 Nix Jiang。

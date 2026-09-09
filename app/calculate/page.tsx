@@ -1,7 +1,17 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { boardCategoryCatalogue, boardCombinationDistribution, cardParts, compareScores, estimateConditionalMultiway, estimateMultiway, evaluate, HAND_NAMES, monteCarloConditionalMultiway, monteCarloHope, MULTIWAY_MONTE_CARLO_SAMPLES, RANKS, simulateMultiway, SUITS, type ExactResult, type Score } from "../poker";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { boardCategoryCatalogue, cardParts, compareScores, evaluate, HAND_NAMES, RANKS, SUITS, type ExactResult, type Score } from "../poker";
+
+// Use Vite's emitted asset URL: vinext rewrites import.meta.url during RSC analysis.
+import pokerWorkerUrl from "../poker.worker?worker&url";
+import { breakEvenCallAmount } from "../pot-odds";
+import type { PokerRequest, PokerResponse } from "../poker-worker-protocol";
+
+const nonNegativeAmount = (input: string) => {
+  const value = Number(input);
+  return Number.isFinite(value) ? Math.max(0, value) : 0;
+};
 
 type PickerMode = "hole" | "board" | null;
 type CalculationPhase = "idle" | "estimating" | "simulating" | "done";
@@ -55,20 +65,57 @@ export default function Home() {
   const [running, setRunning] = useState(false);
   const [phase, setPhase] = useState<CalculationPhase>("idle");
   const [progress, setProgress] = useState(0);
-  const [players, setPlayers] = useState(5);
-  const [potSize, setPotSize] = useState(100);
-  const [callAmount, setCallAmount] = useState(20);
+  const [playersInput, setPlayersInput] = useState("5");
+  const players = Number(playersInput);
+  const playersValid = playersInput.trim() !== "" && Number.isInteger(players) && players >= 2 && players <= 12;
+  const [potInput, setPotInput] = useState("100");
+  const [callInput, setCallInput] = useState("20");
+  const potSize = nonNegativeAmount(potInput);
+  const callAmount = nonNegativeAmount(callInput);
   const calculationToken = useRef(0);
-  const abortController = useRef<AbortController | null>(null);
+  const calculationWorker = useRef<Worker | null>(null);
+  const [calculationError, setCalculationError] = useState<string | null>(null);
+  const [distribution, setDistribution] = useState<{ key: string; result: Extract<PokerResponse, { type: "distribution" }>["result"] } | null>(null);
+  const [distributionError, setDistributionError] = useState<{ key: string; message: string } | null>(null);
 
   const validHole = hole.filter(Boolean) as string[];
   const validBoard = board.filter(Boolean) as string[];
-  const ready = validHole.length === 2 && (validBoard.length === 0 || validBoard.length >= 3);
-  const liveDistribution = useMemo(() => {
-    const selectedHole = hole.filter(Boolean) as string[];
-    const selectedBoard = board.filter(Boolean) as string[];
-    return boardCombinationDistribution(selectedHole, selectedBoard);
-  }, [board, hole]);
+  const cardsReady = validHole.length === 2 && (validBoard.length === 0 || validBoard.length >= 3);
+  const ready = cardsReady && playersValid;
+  const selectionKey = JSON.stringify([validHole, validBoard]);
+  const liveDistribution = distribution?.key === selectionKey ? distribution.result : null;
+  useEffect(() => {
+    const [hero, selectedBoard] = JSON.parse(selectionKey) as [string[], string[]];
+    if (hero.length !== 2 || selectedBoard.length < 3) return;
+    let worker: Worker | undefined;
+    let active = true;
+    const fail = () => {
+      if (active) setDistributionError({ key: selectionKey, message: "牌型分布计算失败，请重新选牌" });
+      worker?.terminate();
+    };
+    try {
+      worker = new Worker(pokerWorkerUrl, { type: "module" });
+      worker.onmessage = ({ data }: MessageEvent<PokerResponse>) => {
+        if (!active) return;
+        if (data.type === "distribution") {
+          setDistribution({ key: selectionKey, result: data.result });
+          setDistributionError(null);
+        } else if (data.type === "error") fail();
+        worker?.terminate();
+      };
+      worker.onerror = fail;
+      worker.onmessageerror = fail;
+      worker.postMessage({ type: "distribution", hero, board: selectedBoard } satisfies PokerRequest);
+    } catch {
+      // Defer state publication just like the worker callbacks.
+      queueMicrotask(fail);
+    }
+    return () => { active = false; worker?.terminate(); };
+  }, [selectionKey]);
+  useEffect(() => () => {
+    calculationToken.current++;
+    calculationWorker.current?.terminate();
+  }, []);
   const boardCatalogue = useMemo(
     () => boardCategoryCatalogue(board.filter(Boolean) as string[], hole.filter(Boolean) as string[]),
     [board, hole],
@@ -84,8 +131,9 @@ export default function Home() {
 
   const cancelCalculation = () => {
     calculationToken.current++;
-    abortController.current?.abort();
-    abortController.current = null;
+    calculationWorker.current?.terminate();
+    calculationWorker.current = null;
+    setCalculationError(null);
     setRunning(false);
     setPhase("idle");
     setProgress(0);
@@ -113,66 +161,55 @@ export default function Home() {
     setResult(null);
   };
 
-  const calculate = async () => {
+  const calculate = () => {
     if (!ready || running) return;
     const token = ++calculationToken.current;
-    const controller = new AbortController();
-    abortController.current = controller;
-    const selectedHole = [...validHole];
-    const selectedBoard = [...validBoard];
-    const opponents = players - 1;
+    calculationWorker.current?.terminate();
+    setCalculationError(null);
     setRunning(true); setPhase("estimating"); setProgress(0);
+    const fail = () => {
+      if (calculationToken.current !== token) return;
+      calculationWorker.current?.terminate();
+      calculationWorker.current = null;
+      setRunning(false); setPhase("idle");
+      setCalculationError("计算失败，请重试；若仍失败请刷新页面。");
+    };
     try {
-      const estimate = estimateMultiway(selectedHole, selectedBoard, opponents);
-      setResult(estimate);
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      if (controller.signal.aborted || calculationToken.current !== token) return;
-      const modelConditionalWin = estimateConditionalMultiway(selectedHole, selectedBoard, opponents);
-      setResult({ ...estimate, conditionalWin: modelConditionalWin });
-      await new Promise<void>((resolve) => setTimeout(resolve, 0));
-      if (controller.signal.aborted || calculationToken.current !== token) return;
-      setPhase("simulating");
-      const simulation = await simulateMultiway(
-        selectedHole,
-        selectedBoard,
-        opponents,
-        MULTIWAY_MONTE_CARLO_SAMPLES,
-        (value) => { if (calculationToken.current === token) setProgress(value); },
-        controller.signal,
-      );
-      if (controller.signal.aborted || calculationToken.current !== token) return;
-      const { runouts, headsUp, categories, bestHand, ...table } = simulation;
-      const hope = selectedBoard.length >= 3 && selectedBoard.length < 5
-        ? monteCarloHope(runouts, evaluate([...selectedHole, ...selectedBoard]), [...selectedHole, ...selectedBoard])
-        : undefined;
-      const conditionalWin = selectedBoard.length >= 3 && selectedBoard.length < 5
-        ? monteCarloConditionalMultiway(runouts, [...selectedHole, ...selectedBoard])
-        : undefined;
-      setResult({ ...estimate, ...headsUp, categories, bestHand, table, hope, conditionalWin });
-    }
-    catch (error) {
-      if (!(error instanceof DOMException && error.name === "AbortError")) console.error(error);
-    }
-    finally {
-      if (calculationToken.current === token) {
-        abortController.current = null;
-        setRunning(false); setPhase("done"); setProgress(1);
-      }
-    }
+      const worker = new Worker(pokerWorkerUrl, { type: "module" });
+      calculationWorker.current = worker;
+      worker.onmessage = ({ data }: MessageEvent<PokerResponse>) => {
+        if (calculationToken.current !== token) return;
+        if (data.type === "error") { fail(); return; }
+        if (data.type === "progress") { setProgress(data.progress); return; }
+        if (data.type === "distribution") return;
+        setResult(data.result);
+        if (data.type === "model") setPhase("simulating");
+        if (data.type === "done") {
+          worker.terminate();
+          calculationWorker.current = null;
+          setRunning(false); setPhase("done"); setProgress(1);
+        }
+      };
+      worker.onerror = fail;
+      worker.onmessageerror = fail;
+      worker.postMessage({ type: "calculate", hero: [...validHole], board: [...validBoard], opponents: players - 1 } satisfies PokerRequest);
+    } catch { fail(); }
   };
 
   const reset = () => {
     cancelCalculation();
-    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayers(5); setPotSize(100); setCallAmount(20);
+    setHole([null, null]); setBoard([null, null, null, null, null]); setResult(null); setPickerMode(null); setProgress(0); setPlayersInput("5"); setPotInput("100"); setCallInput("20");
   };
 
   const pickerLimit = pickerMode === "hole" ? 2 : 5;
   const cardsUsedElsewhere = new Set(pickerMode === "hole" ? validBoard : validHole);
-  const buttonCopy = running ? phase === "estimating" ? "正在生成即时估算" : `正在蒙特卡洛校正 ${Math.round(progress * 100)}%` : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : "立即估算并开始精准计算";
+  const buttonCopy = running ? phase === "estimating" ? "正在生成即时估算" : `正在蒙特卡洛校正 ${Math.round(progress * 100)}%` : !playersValid ? "请输入 2–12 人" : validHole.length !== 2 ? "请先选择两张底牌" : validBoard.length === 1 || validBoard.length === 2 ? "公共牌请选择 0、3、4 或 5 张" : "立即估算并开始精准计算";
   const potOdds = callAmount > 0 ? callAmount / (potSize + callAmount) * 100 : 0;
   const decisionEquity = result?.table?.equity ?? result?.equity ?? 0;
   const equityEdge = result ? decisionEquity - potOdds : 0;
   const callEv = result ? decisionEquity / 100 * (potSize + callAmount) - callAmount : 0;
+  const breakEvenCall = breakEvenCallAmount(potSize, decisionEquity);
+  const breakEvenLabel = breakEvenCall === null ? (potSize > 0 ? "无有限解（EV 始终为正）" : "任意金额") : breakEvenCall.toFixed(2);
   const decision = !result ? null : callAmount <= 0
     ? { label: decisionEquity >= 55 ? "可以主动下注或加注" : "可以过牌观察", tone: decisionEquity >= 55 ? "raise" : "check" }
     : equityEdge < 0
@@ -217,12 +254,14 @@ export default function Home() {
           <div className="table-controls">
             <div className="controls-head"><div><span className="step">03</span><div><h3>牌桌参数</h3><p>人数包含你自己 · 金额单位保持一致即可</p></div></div><div className="odds-inline"><span>所需底池赔率</span><strong>{potOdds.toFixed(1)}%</strong></div></div>
             <div className="controls-row">
-              <label className="control-field"><span>总玩家人数</span><div><b>人数</b><input type="number" min="2" max="9" step="1" value={players} onChange={(event) => { cancelCalculation(); const value = Number(event.target.value); setPlayers(Number.isFinite(value) ? Math.min(9, Math.max(2, Math.round(value))) : 5); setResult(null); }} /></div></label>
-              <label className="control-field"><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potSize} onChange={(event) => setPotSize(Math.max(0, Number(event.target.value) || 0))} /></div></label>
-              <label className="control-field"><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callAmount} onChange={(event) => setCallAmount(Math.max(0, Number(event.target.value) || 0))} /></div></label>
+              <label className="control-field"><span>总玩家人数</span><div><b>人数</b><input type="number" min="2" max="12" step="1" value={playersInput} aria-invalid={!playersValid} aria-describedby={!playersValid ? "players-hint" : undefined} onChange={(event) => { cancelCalculation(); setPlayersInput(event.target.value); setResult(null); }} /></div></label>
+              <label className="control-field"><span>当前底池</span><div><b>◎</b><input type="number" min="0" step="1" value={potInput} onChange={(event) => setPotInput(event.target.value)} onBlur={(event) => setPotInput(String(nonNegativeAmount(event.currentTarget.value)))} /></div></label>
+              <label className="control-field"><span>需要投入 / 跟注</span><div><b>＋</b><input type="number" min="0" step="1" value={callInput} onChange={(event) => setCallInput(event.target.value)} onBlur={(event) => setCallInput(String(nonNegativeAmount(event.currentTarget.value)))} /></div></label>
             </div>
             <button className="calculate" type="button" onClick={calculate} disabled={!ready || running}><span>{buttonCopy}</span><b>{running ? "◌" : "→"}</b>{running && <i className="calculate-progress" style={{ width: `${progress * 100}%` }} />}</button>
-            {!ready && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
+            {calculationError && <p className="calculation-hint" role="alert">{calculationError}</p>}
+            {!playersValid && <p id="players-hint" className="calculation-hint">请输入 2–12 之间的整数人数。</p>}
+            {!cardsReady && <p className="calculation-hint">请选择完整的 2 张底牌；公共牌可以为 0、3、4 或 5 张。</p>}
           </div>
         </div>
 
@@ -236,13 +275,13 @@ export default function Home() {
               <div><span><i className="dot lose" />比你大 · 败</span><strong>{result.lose.toFixed(2)}%</strong>{result.loseHands !== undefined && <small>{result.loseHands.toLocaleString()} 手</small>}</div>
             </div>
             {calculationMeta && <p className="calculation-meta">{calculationMeta}</p>}
-            {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
+            {decision && <div className={`decision-card ${decision.tone}`}><div><p>决策辅助</p><h3>{decision.label}</h3></div><div className="decision-metrics"><span>{result.table ? "多人桌权益" : "手牌权益"} <b>{decisionEquity.toFixed(1)}%</b></span><span>底池赔率 <b>{potOdds.toFixed(1)}%</b></span><span>跟注 EV <b className={callEv >= 0 ? "positive" : "negative"}>{callEv >= 0 ? "+" : ""}{callEv.toFixed(1)}</b></span><span className="breakeven-metric" title="按当前权益计算；当前底池包含对手已投入的筹码，不含本次跟注。金额单位与底池一致。">EV 为 0 的跟注金额 <b>{breakEvenLabel}</b></span></div>{decision.tone === "raise" && potSize > 0 && <p>价值下注参考：约 {Math.round(potSize * .5)}–{Math.round(potSize * .75)}；实际尺寸仍需结合对手范围与弃牌率。</p>}</div>}
           </> : <div className="empty-result"><div className="orbit"><span>♠</span></div><p className="eyebrow">TWO-STAGE ENGINE READY</p><h2>{validBoard.length >= 3 ? "牌桌已就绪" : "翻牌前也可计算"}</h2><p>点击后立即显示数学模型估算，并在后台以 50 万次无放回蒙特卡洛更新为最终概率。</p><div className="mini-guide"><span>1</span> 选择底牌 <b>→</b><span>2</span> 即时估算 <b>→</b><span>3</span> 精准校正</div></div>}
         </aside>
       </section>
 
       <section className="leaders-section catalogue-section">
-        <div className="leaders-intro live-distribution-intro"><p className="eyebrow">LIVE HAND DISTRIBUTION</p>{liveDistribution ? <><div className="live-mini-head"><div><span>公共牌 + {liveDistribution.drawCount} 张组合</span><strong>最常见：{liveDistribution.bestHand === "一对" ? "对子" : liveDistribution.bestHand}</strong></div><small>{liveDistribution.samples.toLocaleString()} 种组合结果</small></div><div className="live-probability-list">{HAND_NAMES.map((name, index) => ({ name, value: liveDistribution.categories[index] })).filter(({ value }) => value > 0).reverse().map(({ name, value }) => <div className="live-probability-row" key={name}><span>{name === "一对" ? "对子" : name}</span><div><i style={{ width: `${value}%` }} /></div><strong>{value.toFixed(1)}%</strong></div>)}</div><p className="live-note">从剩余牌中组合补足到 7 张，已排除你的两张底牌；每次选牌后自动更新。</p></> : <div className="live-intro-empty"><span>3+</span><h2>九类牌型概率</h2><p>选择两张底牌与至少三张公共牌后实时出现。</p></div>}</div>
+        <div className="leaders-intro live-distribution-intro"><p className="eyebrow">LIVE HAND DISTRIBUTION</p>{liveDistribution ? <><div className="live-mini-head"><div><span>公共牌 + {liveDistribution.drawCount} 张组合</span><strong>最常见：{liveDistribution.bestHand === "一对" ? "对子" : liveDistribution.bestHand}</strong></div><small>{liveDistribution.samples.toLocaleString()} 种组合结果</small></div><div className="live-probability-list">{HAND_NAMES.map((name, index) => ({ name, value: liveDistribution.categories[index] })).filter(({ value }) => value > 0).reverse().map(({ name, value }) => <div className="live-probability-row" key={name}><span>{name === "一对" ? "对子" : name}</span><div><i style={{ width: `${value}%` }} /></div><strong>{value.toFixed(1)}%</strong></div>)}</div><p className="live-note">从剩余牌中组合补足到 7 张，已排除你的两张底牌；每次选牌后自动更新。</p></> : <div className="live-intro-empty"><span>3+</span><h2>九类牌型概率</h2><p>{validHole.length === 2 && validBoard.length >= 3 ? (distributionError?.key === selectionKey ? distributionError.message : "正在计算牌型分布…") : "选择两张底牌与至少三张公共牌后实时出现。"}</p></div>}</div>
         {validBoard.length >= 3 ? <div className="category-catalogue">{boardCatalogue.filter((section) => section.variants.length > 0 || madeHand?.category === section.category).map((section, index) => { const isMyHand = madeHand?.category === section.category; const variants = isMyHand ? section.variants.filter((variant) => compactRequirementLabel(variant.label) !== compactRequirementLabel(madeHand.label)) : section.variants; const items = [...variants.map((variant) => ({ type: "variant" as const, strength: variant.strength, variant })), ...(isMyHand ? [{ type: "hero" as const, strength: madeHand.strength }] : [])].sort((first, second) => compareScores(second.strength, first.strength)); return <article className="catalogue-row" key={section.category}><div className="catalogue-title"><span>{String(index + 1).padStart(2, "0")}</span><h3>{section.name === "一对" ? "对子" : section.name}</h3><small>{`${items.length} 种牌力`}</small></div><div className="variant-list">{items.map((item) => item.type === "hero" ? <div className="variant-chip hero-made-chip" key="hero-made-hand"><strong>{madeHand!.label}</strong><span>我的牌</span></div> : <div className={`variant-chip ${item.variant.suitCode === "h" || item.variant.suitCode === "d" ? "red" : ""}`} key={item.variant.key}><strong>{item.variant.label}</strong><span>{item.variant.comboCount} 组底牌</span></div>)}</div></article>; })}</div> : <div className="leaders-empty"><span>3+</span><p>选出至少三张公共牌后，八类牌型及其全部可能档位会在这里自动出现。</p></div>}
       </section>
 

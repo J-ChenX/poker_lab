@@ -2,6 +2,7 @@
   "name": "poker-lab",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "packageManager": "pnpm@10.32.0",
   "engines": {
     "node": ">=22.13.0"
@@ -11,11 +12,12 @@
     "dev:hot": "vinext dev",
     "build": "vinext build",
     "start": "vinext start",
-    "test": "pnpm run build && node --test tests/rendered-html.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts",
+    "test": "pnpm run build && node --test tests/rendered-html.test.mjs tests/poker-worker.test.mjs && tsx --test tests/score-rules.test.ts tests/poker-exact.test.ts tests/poker-evaluator.test.ts",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern .wrangler",
-    "test:poker": "tsx --test tests/poker-exact.test.ts",
+    "test:poker": "tsx --test tests/poker-exact.test.ts tests/poker-evaluator.test.ts",
     "generate:preflop-calibration": "tsx scripts/generate-preflop-calibration.ts",
-    "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts"
+    "validate:monte-carlo": "tsx scripts/validate-monte-carlo.ts",
+    "benchmark:poker": "tsx scripts/benchmark-poker.ts"
   },
   "dependencies": {
     "@fontsource/noto-sans-sc": "^5.2.8",
